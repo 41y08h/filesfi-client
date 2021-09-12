@@ -204,27 +204,37 @@ export default function Home() {
             {signalingState === "connected" && (
               <div className={styles.mainInterface}>
                 <p>🔒 Connected</p>
-                <div>
-                  <FileInput
-                    droppable
-                    className={styles.sendFile}
-                    onChange={handleFileChange}
-                  >
-                    {file ? file.name : "Select or Drop files here"}
-                  </FileInput>
-                  <button
-                    disabled={isSendingFile || !file}
-                    onClick={handleSendFile}
-                  >
-                    {isSendingFile ? "Sending..." : "Send"}
-                  </button>
-                </div>
-                {receivedFile && (
+                <div className={styles.fileInterfaceContainer}>
                   <div>
-                    <p>Your peer has sent you {receivedFile}</p>
-                    <button onClick={downloadFile}>Download</button>
+                    <FileInput
+                      droppable
+                      className={styles.sendFile}
+                      onChange={handleFileChange}
+                    >
+                      {file ? file.name : "Select or Drop files here"}
+                    </FileInput>
+                    <button
+                      className={styles.sendFileButton}
+                      disabled={isSendingFile || !file}
+                      onClick={handleSendFile}
+                    >
+                      {isSendingFile ? "Sending..." : "Send"}
+                    </button>
                   </div>
-                )}
+                  {receivedFile && (
+                    <div>
+                      <p>
+                        Your peer has sent you <strong>{receivedFile}</strong>
+                      </p>
+                      <button
+                        onClick={downloadFile}
+                        className={styles.downloadButton}
+                      >
+                        Download
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

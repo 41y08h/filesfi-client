@@ -2,6 +2,16 @@
   padding: 32px 40px;
   background: #f8f8f8;
   height: 100vh;
+
+  button {
+    border: none;
+    outline: none;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+    }
+  }
 }
 
 .idHeading {
@@ -28,18 +38,12 @@
     border: 1px solid #ebebeb;
   }
   > button {
-    cursor: pointer;
     font-size: inherit;
     height: 3rem;
     padding: 0 16px;
     border-radius: 10px;
     color: white;
     background-color: rgb(6, 6, 206);
-    border: none;
-    outline: none;
-    &:disabled {
-      opacity: 0.6;
-    }
   }
 }
 
@@ -48,15 +52,41 @@
     margin-bottom: 1rem;
   }
 
-  .sendFile {
-    background: white;
-    border: 2px dotted #000;
-    outline: none;
-    width: 250px;
-    height: 100px;
+  .fileInterfaceContainer {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
+    > div:first-child {
+      margin-right: 1.6rem;
+
+      .sendFile {
+        background: white;
+        border: 2px dotted #000;
+        outline: none;
+        width: 250px;
+        height: 100px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      .sendFileButton {
+        font-size: 1.3rem;
+        margin-top: 0.8rem;
+        background: red;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 6px;
+      }
+    }
+    > div:last-child {
+      .downloadButton {
+        padding: 8px 12px;
+        margin-top: 0.6rem;
+        background: darkblue;
+        border-radius: 6px;
+        font-size: 1.2rem;
+        color: white;
+      }
+    }
   }
 }
