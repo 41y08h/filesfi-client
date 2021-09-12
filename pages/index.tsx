@@ -6,29 +6,31 @@ import IdDisplay from "../components/IdDisplay";
 import FileInput from "../components/FileInput";
 import socket from "../RTCs/socket";
 import useEventSubscription from "../hooks/useEventSubscription";
+import useClientSideInit from "../hooks/useClientSideInit";
 
-function useClientSideInit<T>(initializer: () => T) {
-  let value: T;
-
-  useEffect(() => {
-    value = initializer();
-  }, []);
-
-  return value;
-}
-
-type CallState = "idle" | "calling" | "connected";
+type SignalingState = "idle" | "connecting" | "connected";
+type RTCSerialDataType = "fileTransport/chunk" | "fileTransport/done";
+type RTCSerialData = { type: RTCSerialDataType; payload: any };
 
 export default function Home() {
+  // WebSocket
   const [id, setId] = useState<number>();
-  const [callState, setCallState] = useState<CallState>("idle");
   const [isSocketConnected, setIsSocketConnected] = useState(false);
+
+  // WebRTC Signaling
+  const [signalingState, setSignalingState] = useState<SignalingState>("idle");
   const peerIdInputRef = useRef<HTMLInputElement>();
   const callerRef = useRef<SimplePeerInstance>();
+  const calleeRef = useRef<SimplePeerInstance>();
+  const [incomingCall, setIncomingCall] = useState<ICallData>();
+
+  // Connected UI
   const [file, setFile] = useState<File>();
   const [connection, setConnection] = useState<SimplePeerInstance>();
   const [gotFile, setGotFile] = useState();
+  const [isSendingFile, setIsSendingFile] = useState(false);
 
+  // File transport
   const worker = useClientSideInit<Worker>(() => new Worker("/worker.js"));
   const streamSaver = useClientSideInit(() => require("streamsaver"));
 
@@ -47,18 +49,10 @@ export default function Home() {
   });
 
   useEventSubscription("peerIsCalling", async (call: ICallData) => {
-    const callee = new Peer({ trickle: false });
+    calleeRef.current = new Peer({ trickle: false });
+    calleeRef.current.signal(call.signal);
 
-    // Set caller's signal
-    callee.signal(call.signal);
-    callee.on("connect", getCallConnectedHandler(callee));
-
-    callee.on("signal", (signal) => {
-      const callerId = call.callerId;
-      const answerCallPayload: ICallInitData = { callerId, signal };
-
-      socket.emit("answerCall", answerCallPayload);
-    });
+    setIncomingCall(call);
   });
 
   useEventSubscription("callAnswered", (signal) => {
@@ -69,36 +63,75 @@ export default function Home() {
   const handleSubmit: FormEventHandler = async (event) => {
     event.preventDefault();
 
-    // Create a caller in webrtc
     callerRef.current = new Peer({ initiator: true, trickle: false });
 
-    const caller = callerRef.current;
-    caller.on("connect", getCallConnectedHandler(caller));
-
-    setCallState("calling");
-
-    caller.on("signal", (signal) => {
-      // Send caller's signal to the peer
-      const peerId = parseInt(peerIdInputRef.current.value);
-      const callPayload: ICallInit = { peerId, signal };
-
-      socket.emit("callPeer", callPayload);
-    });
+    setSignalingState("connecting");
   };
 
+  // Caller and callee event handler attachments
   function getCallConnectedHandler(peer: SimplePeerInstance) {
     setConnection(peer);
 
     return () => {
-      setCallState("connected");
+      setSignalingState("connected");
     };
   }
 
-  const handleFiles = (files: FileList) => {
+  useEffect(() => {
+    const caller = callerRef.current;
+    if (!caller) return;
+
+    // Handler call connection
+    const handleCallConnected = getCallConnectedHandler(caller);
+    caller.on("connect", handleCallConnected);
+
+    // Handler signaling
+    function handleSignal(signal) {
+      // Send caller's signal to the peer
+      const peerId = parseInt(peerIdInputRef.current.value);
+      const callPayload: ICallInitData = { peerId, signal };
+
+      socket.emit("callPeer", callPayload);
+    }
+    caller.on("signal", handleSignal);
+
+    return () => {
+      caller.off("connect", handleCallConnected);
+      caller.off("signal", handleSignal);
+    };
+  }, [callerRef.current]);
+
+  useEffect(() => {
+    const callee = calleeRef.current;
+    if (!callee) return;
+
+    const call = incomingCall;
+
+    const handleCallConnected = getCallConnectedHandler(callee);
+    callee.on("connect", handleCallConnected);
+
+    function handleSignal(signal) {
+      const callerId = call.callerId;
+      const answerCallPayload: ICallData = { callerId, signal };
+
+      socket.emit("answerCall", answerCallPayload);
+    }
+
+    callee.on("signal", handleSignal);
+
+    return () => {
+      callee.off("connect", handleCallConnected);
+      callee.off("signal", handleSignal);
+    };
+  }, [calleeRef.current]);
+
+  const handleFileChange = (files: FileList) => {
     setFile(files[0]);
   };
 
   function handleSendFile() {
+    setIsSendingFile(true);
+
     const stream = file.stream();
     const reader = stream.getReader();
 
@@ -106,13 +139,22 @@ export default function Home() {
       handleReading(chunk.done, chunk.value);
     });
 
+    // Transport file recursively
     function handleReading(done: boolean, chunk) {
       if (done) {
-        return connection.write(
-          JSON.stringify({ done: true, filename: file.name })
-        );
+        setIsSendingFile(false);
+
+        // Notify by WebRTC that file transport is complete
+        const data: RTCSerialData = {
+          type: "fileTransport/done",
+          payload: {
+            filename: file.name,
+          },
+        };
+        return connection.write(JSON.stringify(data));
       }
       connection.write(chunk);
+
       reader.read().then((chunk) => {
         handleReading(chunk.done, chunk.value);
       });
@@ -120,26 +162,34 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!connection || !worker) return;
+    if (!worker || !connection) return;
 
-    function handleReceivingData(data) {
-      if (data.toString().includes("done")) {
-        const parsed = JSON.parse(data);
-        setGotFile(parsed);
+    function handleData(chunk) {
+      console.log("data is being transport");
+      const isDone = chunk.toString().includes("payload");
+      if (isDone) {
+        const data: RTCSerialData = JSON.parse(chunk);
+        setGotFile(data.payload.filename);
 
         worker.postMessage("download");
         worker.addEventListener("message", (event) => {
           const stream = event.data.stream();
-          const fileStream = streamSaver?.createWriteStream("savers.pdf");
+          const fileStream = streamSaver?.createWriteStream(
+            data.payload.filename
+          );
           stream.pipeTo(fileStream);
         });
       } else {
-        worker.postMessage(data);
+        worker.postMessage(chunk);
       }
     }
 
-    connection.on("data", handleReceivingData);
-  }, [connection, worker]);
+    connection.on("data", handleData);
+
+    return () => {
+      connection.off("data", handleData);
+    };
+  }, [worker, connection]);
 
   return (
     <div className={styles.container}>
@@ -148,23 +198,28 @@ export default function Home() {
           <p className={styles.idHeading}>Your ID</p>
           <IdDisplay id={id} />
           <div className={styles.innerContent}>
-            {callState === "connected" && (
+            {signalingState === "connected" && (
               <div className={styles.mainInterface}>
                 <p>🔒 Connected</p>
                 <div>
                   <FileInput
                     droppable
                     className={styles.sendFile}
-                    onChange={handleFiles}
+                    onChange={handleFileChange}
                   >
                     {file ? file.name : "Select or Drop files here"}
                   </FileInput>
-                  <button onClick={handleSendFile}>Send</button>
+                  <button
+                    disabled={isSendingFile || !file}
+                    onClick={handleSendFile}
+                  >
+                    {isSendingFile ? "Sending..." : "Send"}
+                  </button>
                 </div>
               </div>
             )}
 
-            {(callState === "idle" || callState === "calling") && (
+            {(signalingState === "idle" || signalingState === "connecting") && (
               <form className={styles.connectForm} onSubmit={handleSubmit}>
                 <input
                   required
@@ -172,8 +227,11 @@ export default function Home() {
                   type="number"
                   placeholder="Connect to ID"
                 />
-                <button type="submit" disabled={callState === "calling"}>
-                  {callState === "idle" ? "Connect" : "Connecting..."}
+                <button
+                  type="submit"
+                  disabled={signalingState === "connecting"}
+                >
+                  {signalingState === "idle" ? "Connect" : "Connecting..."}
                 </button>
               </form>
             )}
