@@ -7,6 +7,7 @@ import FileInput from "../components/FileInput";
 import socket from "../RTCs/socket";
 import useEventSubscription from "../hooks/useEventSubscription";
 import useClientSideInit from "../hooks/useClientSideInit";
+import { toast } from "react-toastify";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCSerialDataType = "fileTransport/chunk" | "fileTransport/done";
@@ -46,6 +47,11 @@ export default function Home() {
 
   useEventSubscription("disconnect", () => {
     setIsSocketConnected(false);
+  });
+
+  useEventSubscription("peerDisconnected", () => {
+    setSignalingState("idle");
+    toast("The connection was closed");
   });
 
   useEventSubscription("peerIsCalling", async (call: ICallData) => {
