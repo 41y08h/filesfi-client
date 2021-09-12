@@ -27,7 +27,7 @@ export default function Home() {
   // Connected UI
   const [file, setFile] = useState<File>();
   const [connection, setConnection] = useState<SimplePeerInstance>();
-  const [gotFile, setGotFile] = useState();
+  const [receivedFile, setReceivedFile] = useState<string>();
   const [isSendingFile, setIsSendingFile] = useState(false);
 
   // File transport
@@ -161,35 +161,38 @@ export default function Home() {
     }
   }
 
+  function downloadFile() {
+    // Initiate download
+    worker.postMessage("downloadFile");
+  }
+
   useEffect(() => {
     if (!worker || !connection) return;
 
+    function handleWorkerMessage(event) {
+      const stream = event.data.stream();
+      const fileStream = streamSaver?.createWriteStream(receivedFile);
+      stream.pipeTo(fileStream);
+    }
+
     function handleData(chunk) {
-      console.log("data is being transport");
       const isDone = chunk.toString().includes("payload");
       if (isDone) {
         const data: RTCSerialData = JSON.parse(chunk);
-        setGotFile(data.payload.filename);
-
-        worker.postMessage("download");
-        worker.addEventListener("message", (event) => {
-          const stream = event.data.stream();
-          const fileStream = streamSaver?.createWriteStream(
-            data.payload.filename
-          );
-          stream.pipeTo(fileStream);
-        });
+        setReceivedFile(data.payload.filename);
       } else {
         worker.postMessage(chunk);
       }
     }
 
     connection.on("data", handleData);
+    worker.addEventListener("message", handleWorkerMessage);
 
     return () => {
       connection.off("data", handleData);
+      worker.removeEventListener("message", handleWorkerMessage);
     };
-  }, [worker, connection]);
+  }, [worker, connection, receivedFile]);
 
   return (
     <div className={styles.container}>
@@ -216,6 +219,12 @@ export default function Home() {
                     {isSendingFile ? "Sending..." : "Send"}
                   </button>
                 </div>
+                {receivedFile && (
+                  <div>
+                    <p>Your peer has sent you {receivedFile}</p>
+                    <button onClick={downloadFile}>Download</button>
+                  </div>
+                )}
               </div>
             )}
 
