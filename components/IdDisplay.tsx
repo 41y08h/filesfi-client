@@ -1,11 +1,11 @@
 import { FC } from "react";
-import styles from "../styles/ID.module.scss";
+import styles from "../styles/IdDisplay.module.scss";
 
 interface Props {
   id: number;
 }
 
-const ID: FC<Props> = ({ id }) => {
+const IdDisplay: FC<Props> = ({ id }) => {
   return (
     <div className={styles.root}>
       {Array.from(String(id)).map((item, i) => (
@@ -15,4 +15,4 @@ const ID: FC<Props> = ({ id }) => {
   );
 };
 
-export default ID;
+export default IdDisplay;

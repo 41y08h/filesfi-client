@@ -42,3 +42,21 @@
     }
   }
 }
+
+.mainInterface {
+  > p {
+    margin-bottom: 1rem;
+  }
+
+  .sendFile {
+    background: white;
+    border: 2px dotted #000;
+    outline: none;
+    width: 250px;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+  }
+}
