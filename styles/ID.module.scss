@@ -1,0 +1,16 @@
+.root {
+  display: flex;
+  > span {
+    background: white;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-right: 8px;
+    border: 1px solid #ebebeb;
+  }
+}
+
