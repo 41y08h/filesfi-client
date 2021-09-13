@@ -206,11 +206,21 @@ export default function Home() {
       }
     }
 
+    function handleError(error) {
+      if (error.code === "ERR_DATA_CHANNEL") {
+        setSignalingState("idle");
+        toast.error("Connection has been closed");
+      }
+    }
+
     connection.on("data", handleData);
+    connection.on("error", handleError);
     worker.addEventListener("message", handleWorkerMessage);
 
     return () => {
       connection.off("data", handleData);
+      connection.off("error", handleError);
+
       worker.removeEventListener("message", handleWorkerMessage);
     };
   }, [worker, connection, receivedFile]);
@@ -263,6 +273,7 @@ export default function Home() {
               <form className={styles.connectForm} onSubmit={handleSubmit}>
                 <input
                   required
+                  min={100000}
                   ref={peerIdInputRef}
                   type="number"
                   placeholder="Connect to ID"
