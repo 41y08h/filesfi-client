@@ -206,20 +206,26 @@ export default function Home() {
       }
     }
 
+    function handleClose() {
+      setSignalingState("idle");
+      toast.error("Connection has been closed");
+    }
+
     function handleError(error) {
       if (error.code === "ERR_DATA_CHANNEL") {
-        setSignalingState("idle");
-        toast.error("Connection has been closed");
+        handleClose();
       }
     }
 
     connection.on("data", handleData);
     connection.on("error", handleError);
+    connection.on("close", handleClose);
     worker.addEventListener("message", handleWorkerMessage);
 
     return () => {
       connection.off("data", handleData);
       connection.off("error", handleError);
+      connection.off("close", handleClose);
 
       worker.removeEventListener("message", handleWorkerMessage);
     };
