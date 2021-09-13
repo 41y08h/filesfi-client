@@ -208,6 +208,8 @@ export default function Home() {
 
     function handleClose() {
       setSignalingState("idle");
+      connection.destroy();
+      setConnection(undefined);
       toast.error("Connection has been closed");
     }
 
