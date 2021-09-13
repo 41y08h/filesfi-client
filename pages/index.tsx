@@ -54,6 +54,8 @@ export default function Home() {
       toast.error("Requested device is busy");
     } else if (error.type === "callingSelf") {
       toast.error("Calling self is not allowed");
+    } else if (error.type === "deviceNotFound") {
+      toast.error("Device not found");
     }
 
     callerRef.current.destroy();
