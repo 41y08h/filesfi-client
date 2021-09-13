@@ -49,8 +49,12 @@ export default function Home() {
     setIsSocketConnected(false);
   });
 
-  useEventSubscription("exception/callPeer/alreadyConnected", (payload) => {
-    toast.error(payload.message);
+  useEventSubscription("exception/callPeer", (error) => {
+    if (error.type === "deviceBusy") {
+      toast.error("Requested device is busy");
+    } else if (error.type === "callingSelf") {
+      toast.error("Calling self is not allowed");
+    }
 
     callerRef.current.destroy();
     callerRef.current = undefined;
@@ -58,9 +62,10 @@ export default function Home() {
   });
 
   useEventSubscription("peerIsCalling", async (call: ICallData) => {
-    if (signalingState === "connected") {
-      return socket.emit("exception/peerIsCalling/alreadyConnected", {
-        callerId: call.callerId,
+    if (["connected", "connecting"].includes(signalingState)) {
+      return socket.emit("exception/peerIsCalling", {
+        type: "busy",
+        payload: { callerId: call.callerId },
       });
     }
     calleeRef.current = new Peer({ trickle: false });
