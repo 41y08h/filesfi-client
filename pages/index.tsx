@@ -32,13 +32,13 @@ export default function Home() {
   const [isSendingFile, setIsSendingFile] = useState(false);
 
   // File transport
-  const worker = useClientSideInit<Worker>(() => new Worker("/worker.js"));
+  const worker = useClientSideInit(() => new Worker("/worker.js"));
   const streamSaver = useClientSideInit(() => require("streamsaver"));
 
   // WebSocket connectivity
-  useEffect(() => {
+  useEventSubscription("connect", () => {
     socket.emit("join");
-  }, []);
+  });
 
   useEventSubscription("join/callback", (id: number) => {
     setId(id);
@@ -49,12 +49,20 @@ export default function Home() {
     setIsSocketConnected(false);
   });
 
-  useEventSubscription("peerDisconnected", () => {
+  useEventSubscription("exception/callPeer/alreadyConnected", (payload) => {
+    toast.error(payload.message);
+
+    callerRef.current.destroy();
+    callerRef.current = undefined;
     setSignalingState("idle");
-    toast("The connection was closed");
   });
 
   useEventSubscription("peerIsCalling", async (call: ICallData) => {
+    if (signalingState === "connected") {
+      return socket.emit("exception/peerIsCalling/alreadyConnected", {
+        callerId: call.callerId,
+      });
+    }
     calleeRef.current = new Peer({ trickle: false });
     calleeRef.current.signal(call.signal);
 

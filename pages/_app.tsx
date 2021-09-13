@@ -6,7 +6,7 @@ function MyApp({ Component, pageProps }) {
   return (
     <div>
       <Component {...pageProps} />
-      <ToastContainer />
+      <ToastContainer position="bottom-center" />
     </div>
   );
 }
