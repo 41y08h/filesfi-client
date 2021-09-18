@@ -8,6 +8,7 @@ import socket from "../RTCs/socket";
 import useEventSubscription from "../hooks/useEventSubscription";
 import useClientSideInit from "../hooks/useClientSideInit";
 import { toast } from "react-toastify";
+import readInChunks from "../utils/readInChunks";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCSerialDataType = "fileTransport/chunk" | "fileTransport/done";
@@ -151,35 +152,31 @@ export default function Home() {
   };
 
   function handleSendFile() {
-    setIsSendingFile(true);
-
-    const stream = file.stream();
-    const reader = stream.getReader();
-
-    reader.read().then((chunk) => {
-      handleReading(chunk.done, chunk.value);
-    });
+    // setIsSendingFile(true);
 
     // Transport file recursively
-    function handleReading(done: boolean, chunk) {
-      if (done) {
-        setIsSendingFile(false);
+    readInChunks(file, {
+      onRead(chunk, { progress }) {
+        if (progress === 100) {
+          // Notify by WebRTC that file transport is complete
+          const data: RTCSerialData = {
+            type: "fileTransport/done",
+            payload: {
+              filename: file.name,
+            },
+          };
+          connection.write(JSON.stringify(data));
 
-        // Notify by WebRTC that file transport is complete
-        const data: RTCSerialData = {
-          type: "fileTransport/done",
-          payload: {
-            filename: file.name,
-          },
-        };
-        return connection.write(JSON.stringify(data));
-      }
-      connection.write(chunk);
+          setIsSendingFile(false);
+          toast.success(`Sent ${file.name}`);
+          // return setFile(undefined);
+          return;
+        }
 
-      reader.read().then((chunk) => {
-        handleReading(chunk.done, chunk.value);
-      });
-    }
+        const data = new Uint8Array(chunk);
+        connection.write(data);
+      },
+    });
   }
 
   function downloadFile() {
@@ -199,21 +196,28 @@ export default function Home() {
     function handleData(chunk) {
       const isDone = chunk.toString().includes("payload");
       if (isDone) {
+        console.log("is done");
+
         const data: RTCSerialData = JSON.parse(chunk);
         setReceivedFile(data.payload.filename);
       } else {
+        console.log("receiving ");
         worker.postMessage(chunk);
       }
     }
 
     function handleClose() {
-      setSignalingState("idle");
       connection.destroy();
       setConnection(undefined);
-      toast.error("Connection has been closed");
+
+      if (signalingState === "connected")
+        toast.error("Connection has been closed");
+
+      setSignalingState("idle");
     }
 
     function handleError(error) {
+      console.log(error);
       if (error.code === "ERR_DATA_CHANNEL") {
         handleClose();
       }
