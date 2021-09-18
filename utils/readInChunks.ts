@@ -27,9 +27,7 @@ const readInChunks: ReadInChunksFn = (
       const chunk = event.target.result as ArrayBuffer;
 
       const progress =
-        endPosition > file.size
-          ? 100
-          : Math.floor((endPosition / file.size) * 100);
+        endPosition > file.size ? 100 : (endPosition / file.size) * 100;
       onRead && onRead(chunk, { progress });
 
       if (endPosition < file.size) readChunk(nextStartPosition);
