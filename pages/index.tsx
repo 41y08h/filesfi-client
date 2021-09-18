@@ -9,11 +9,15 @@ import useEventSubscription from "../hooks/useEventSubscription";
 import useClientSideInit from "../hooks/useClientSideInit";
 import { toast } from "react-toastify";
 import readInChunks from "../utils/readInChunks";
+import { Dialog, Transition } from "@headlessui/react";
+import { Fragment } from "react";
+import formatFileSize from "../utils/formatFileSize";
+import copy from "copy-to-clipboard";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCSerialDataType = "fileTransport";
-type RTCSerialData = { type: RTCSerialDataType; payload: any };
-type FileTransport = { name: string; progress: number };
+type RTCSerialData<T = any> = { type: RTCSerialDataType; payload: T };
+type FileTransport = { name: string; size: number; progress: number };
 
 export default function Home() {
   // WebSocket
@@ -33,6 +37,8 @@ export default function Home() {
   const [file, setFile] = useState<File>();
   const [receivingFile, setReceivingFile] = useState<FileTransport>();
   const [sendingFile, setSendingFile] = useState<FileTransport>();
+  const [isSendingModalOpen, setIsSendingModalOpen] = useState(false);
+  const [isReceivingModalOpen, setIsReceivingModalOpen] = useState(false);
 
   // File transport
   const worker = useClientSideInit(() => new Worker("/worker.js"));
@@ -150,16 +156,20 @@ export default function Home() {
   }, [calleeRef.current]);
 
   const handleFileChange = (files: FileList) => {
-    setFile(files[0]);
+    const file = files[0];
+    setFile(file);
+    if (file) setIsSendingModalOpen(true);
   };
 
   function handleSendFile() {
-    setSendingFile({ name: file.name, progress: 0 });
+    setSendingFile({ name: file.name, size: file.size, progress: 0 });
+    setIsSendingModalOpen(true);
 
-    const data: RTCSerialData = {
+    const data: RTCSerialData<FileTransport> = {
       type: "fileTransport",
       payload: {
-        filename: file.name,
+        name: file.name,
+        size: file.size,
         progress: 0,
       },
     };
@@ -173,10 +183,11 @@ export default function Home() {
         const fileData = new Uint8Array(chunk);
         connection.write(fileData);
 
-        const data: RTCSerialData = {
+        const data: RTCSerialData<FileTransport> = {
           type: "fileTransport",
           payload: {
             name: file.name,
+            size: file.size,
             progress,
           },
         };
@@ -184,17 +195,18 @@ export default function Home() {
       },
       onSuccess() {
         // Notify by WebRTC that file transport is complete
-        const data: RTCSerialData = {
+        const data: RTCSerialData<FileTransport> = {
           type: "fileTransport",
           payload: {
             name: file.name,
+            size: file.size,
             progress: 100,
           },
         };
         connection.write(JSON.stringify(data));
 
         setFile(undefined);
-        setSendingFile(undefined);
+        setIsSendingModalOpen(false);
         toast.success(`Sent ${file.name}`);
       },
     });
@@ -220,6 +232,7 @@ export default function Home() {
         const data: RTCSerialData = JSON.parse(chunk);
         if (data.type === "fileTransport") {
           setReceivingFile(data.payload);
+          setIsReceivingModalOpen(true);
         } else {
           // File chunk
           worker.postMessage(chunk);
@@ -259,57 +272,151 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      {isSocketConnected ? (
-        <div>
-          <p className={styles.idHeading}>Your ID</p>
-          <IdDisplay id={id} />
-          <div className={styles.innerContent}>
-            {signalingState === "connected" && (
-              <div className={styles.mainInterface}>
-                <p>🔒 Connected</p>
-                <div className={styles.fileInterfaceContainer}>
-                  <div>
-                    <FileInput
-                      droppable
-                      className={styles.sendFile}
-                      onChange={handleFileChange}
-                    >
-                      {file ? file.name : "Select or Drop files here"}
-                    </FileInput>
-                    {(file || sendingFile) && (
-                      <button
-                        className={styles.sendFileButton}
-                        disabled={!!sendingFile}
-                        onClick={handleSendFile}
-                      >
-                        {sendingFile
-                          ? `Sending (${Math.floor(sendingFile.progress)}%)`
-                          : "Send"}
-                      </button>
-                    )}
-                  </div>
-                  {receivingFile?.progress < 100 ? (
-                    <p>{receivingFile.progress}%</p>
-                  ) : null}
-                  {receivingFile?.progress === 100 && (
-                    <div>
-                      <p>
-                        Your peer has sent you{" "}
-                        <strong>{receivingFile.name}</strong>
-                      </p>
-                      <button
-                        onClick={downloadFile}
-                        className={styles.downloadButton}
-                      >
-                        Download
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+      <div className={styles.content}>
+        {isSocketConnected ? (
+          <div>
+            <p className={styles.idHeading}>Your ID</p>
+            <div className={styles.idContainer}>
+              <IdDisplay id={id} />
+              <button
+                className={styles.copyButton}
+                onClick={() => {
+                  copy(id);
+                  toast.success("Copied");
+                }}
+              >
+                📋
+              </button>
+            </div>
+          </div>
+        ) : (
+          "Connecting..."
+        )}
 
-            {(signalingState === "idle" || signalingState === "connecting") && (
+        <Transition
+          appear
+          show={isSendingModalOpen}
+          as={Fragment}
+          afterLeave={() => {
+            setFile(undefined);
+            setSendingFile(undefined);
+          }}
+        >
+          <Dialog
+            as="div"
+            className={styles.modal}
+            onClose={() => {
+              if (!sendingFile) setIsSendingModalOpen(false);
+            }}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter={styles.enter}
+              enterFrom={styles.enterFrom}
+              enterTo={styles.enterTo}
+              leave={styles.leave}
+              leaveFrom={styles.leaveFrom}
+              leaveTo={styles.leaveTo}
+            >
+              <Dialog.Overlay as="div" className={styles.backdrop} />
+            </Transition.Child>
+            <Transition.Child
+              as="main"
+              enter={styles.enter}
+              enterFrom={styles.enterFrom}
+              enterTo={styles.enterTo}
+              leave={styles.leave}
+              leaveFrom={styles.leaveFrom}
+              leaveTo={styles.leaveTo}
+            >
+              <Dialog.Title>{sendingFile ? "Sending" : "Send"}</Dialog.Title>
+              <Dialog.Description className={styles.description}>
+                {sendingFile ? sendingFile.name : file?.name}{" "}
+                <small>
+                  ({formatFileSize(sendingFile?.size ?? file?.size)})
+                </small>
+              </Dialog.Description>
+
+              {sendingFile && (
+                <progress
+                  className={styles.progress}
+                  value={sendingFile?.progress / 100}
+                />
+              )}
+              <button className={styles.sendButton} onClick={handleSendFile}>
+                Send
+              </button>
+            </Transition.Child>
+          </Dialog>
+        </Transition>
+
+        <Transition appear show={isReceivingModalOpen} as={Fragment}>
+          <Dialog
+            as="div"
+            className={styles.modal}
+            onClose={() => {
+              if (!isReceivingModalOpen) setReceivingFile(undefined);
+            }}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter={styles.enter}
+              enterFrom={styles.enterFrom}
+              enterTo={styles.enterTo}
+              leave={styles.leave}
+              leaveFrom={styles.leaveFrom}
+              leaveTo={styles.leaveTo}
+            >
+              <Dialog.Overlay as="div" className={styles.backdrop} />
+            </Transition.Child>
+            <Transition.Child
+              as="main"
+              enter={styles.enter}
+              enterFrom={styles.enterFrom}
+              enterTo={styles.enterTo}
+              leave={styles.leave}
+              leaveFrom={styles.leaveFrom}
+              leaveTo={styles.leaveTo}
+            >
+              <Dialog.Title>
+                {receivingFile?.progress === 100
+                  ? "Download Complete"
+                  : "Receiving"}
+              </Dialog.Title>
+              <Dialog.Description className={styles.description}>
+                {receivingFile?.name}{" "}
+                <small>({formatFileSize(receivingFile?.size)})</small>
+              </Dialog.Description>
+
+              {receivingFile?.progress === 100 ? (
+                <button onClick={downloadFile}>Download</button>
+              ) : (
+                <progress
+                  className={styles.progress}
+                  value={receivingFile?.progress / 100}
+                />
+              )}
+              <button>Cancel</button>
+            </Transition.Child>
+          </Dialog>
+        </Transition>
+
+        <div className={styles.innerContent}>
+          {signalingState === "connected" && (
+            <div className={styles.mainInterface}>
+              <p>🔒 Connected to peer</p>
+              <FileInput
+                droppable
+                className={styles.fileInput}
+                onChange={handleFileChange}
+              >
+                {file ? file.name : "Select or drop files here"}
+              </FileInput>
+            </div>
+          )}
+
+          {(signalingState === "idle" || signalingState === "connecting") &&
+            isSocketConnected && (
               <form className={styles.connectForm} onSubmit={handleSubmit}>
                 <input
                   required
@@ -326,11 +433,8 @@ export default function Home() {
                 </button>
               </form>
             )}
-          </div>
         </div>
-      ) : (
-        "Connecting..."
-      )}
+      </div>
     </div>
   );
 }

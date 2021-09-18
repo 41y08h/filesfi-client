@@ -1,16 +1,21 @@
+$primaryColor: #300a24;
+
+@mixin buttonBorder {
+  color: white;
+  border: 1px solid white !important;
+
+  box-shadow: 0 2px #fff;
+}
+
 .container {
-  padding: 32px 40px;
-  background: #f8f8f8;
+  padding: 48px;
+  background: $primaryColor;
+  color: white;
   height: 100vh;
-
-  button {
-    border: none;
-    outline: none;
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.6;
-    }
+  .content {
+    max-width: 768px;
+    width: 100%;
+    margin: auto;
   }
 }
 
@@ -20,30 +25,38 @@
   margin-bottom: 1rem;
 }
 
+.idContainer {
+  display: flex;
+  .copyButton {
+    color: white;
+    margin-left: 0.5rem;
+    font-size: 1.6rem;
+  }
+}
+
 .innerContent {
   margin-top: 0.8rem;
 }
 
 .connectForm {
   font-size: 1.3rem;
-  font: "Inter", sans-serif;
   > input {
     font-size: inherit;
     padding: 8px 12px;
-    border-radius: 6px;
     outline: none;
     border: none;
     margin-right: 1rem;
     height: 3rem;
-    border: 1px solid #ebebeb;
+    background: none;
+    color: white;
+    border: 1px solid white;
+    box-shadow: 2px 2px #fff;
   }
   > button {
     font-size: inherit;
     height: 3rem;
     padding: 0 16px;
-    border-radius: 10px;
-    color: white;
-    background-color: rgb(6, 6, 206);
+    @include buttonBorder();
   }
 }
 
@@ -52,41 +65,104 @@
     margin-bottom: 1rem;
   }
 
-  .fileInterfaceContainer {
+  .fileInput {
+    outline: none;
+    height: 300px;
     display: flex;
-    > div:first-child {
-      margin-right: 1.6rem;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+  }
+}
 
-      .sendFile {
-        background: white;
-        border: 2px dotted #000;
-        outline: none;
-        width: 250px;
-        height: 100px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-      }
+.modal {
+  position: fixed;
+  z-index: 10;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-      .sendFileButton {
-        font-size: 1.3rem;
-        margin-top: 0.8rem;
-        background: red;
-        color: white;
-        padding: 6px 10px;
-        border-radius: 6px;
-      }
+  > .backdrop {
+    background: #000000c4;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+
+    &.enter {
+      transition: opacity 0.2s ease-in;
     }
-    > div:last-child {
-      .downloadButton {
-        padding: 8px 12px;
-        margin-top: 0.6rem;
-        background: darkblue;
-        border-radius: 6px;
-        font-size: 1.2rem;
-        color: white;
-      }
+    &.enterFrom {
+      opacity: 0;
+    }
+    &.enterTo {
+      opacity: 1;
+    }
+
+    &.leave {
+      transition: opacity 0.2s ease-out;
+    }
+    &.leaveFrom {
+      opacity: 1;
+    }
+    &.leaveTo {
+      opacity: 0;
+    }
+  }
+
+  > main {
+    color: white;
+    background: $primaryColor;
+    border: 1px solid #fff;
+    z-index: 20;
+    padding: 1.4rem;
+
+    > .progress {
+      width: 100%;
+    }
+    > .description {
+      margin-top: 0.5rem;
+    }
+
+    .sendButton {
+      margin-left: auto;
+      width: fit-content;
+      @include buttonBorder();
+      padding: 4px 8px;
+      font-size: 1rem;
+    }
+
+    &.enter {
+      transition-property: transform opacity;
+      transition-duration: 0.2s;
+      transition-timing-function: ease-in;
+    }
+    &.enterFrom {
+      transform: scale(0);
+      opacity: 0;
+    }
+    &.enterTo {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    &.leave {
+      transition-property: transform opacity;
+      transition-duration: 0.2s;
+      transition-timing-function: ease-out;
+    }
+    &.leaveFrom {
+      opacity: 1;
+      transform: scale(1);
+    }
+    &.leaveTo {
+      transform: scale(0);
+      opacity: 0;
     }
   }
 }

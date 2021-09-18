@@ -1,7 +1,6 @@
 .root {
   display: flex;
   > span {
-    background: white;
     width: 60px;
     height: 60px;
     display: flex;
@@ -13,4 +12,3 @@
     border: 1px solid #ebebeb;
   }
 }
-
