@@ -11,8 +11,9 @@ import { toast } from "react-toastify";
 import readInChunks from "../utils/readInChunks";
 
 type SignalingState = "idle" | "connecting" | "connected";
-type RTCSerialDataType = "fileTransport/chunk" | "fileTransport/done";
+type RTCSerialDataType = "fileTransport";
 type RTCSerialData = { type: RTCSerialDataType; payload: any };
+type FileTransport = { name: string; progress: number };
 
 export default function Home() {
   // WebSocket
@@ -27,10 +28,11 @@ export default function Home() {
   const [incomingCall, setIncomingCall] = useState<ICallData>();
 
   // Connected UI
-  const [file, setFile] = useState<File>();
   const [connection, setConnection] = useState<SimplePeerInstance>();
-  const [receivedFile, setReceivedFile] = useState<string>();
-  const [isSendingFile, setIsSendingFile] = useState(false);
+
+  const [file, setFile] = useState<File>();
+  const [receivingFile, setReceivingFile] = useState<FileTransport>();
+  const [sendingFile, setSendingFile] = useState<FileTransport>();
 
   // File transport
   const worker = useClientSideInit(() => new Worker("/worker.js"));
@@ -152,29 +154,48 @@ export default function Home() {
   };
 
   function handleSendFile() {
-    // setIsSendingFile(true);
+    setSendingFile({ name: file.name, progress: 0 });
+
+    const data: RTCSerialData = {
+      type: "fileTransport",
+      payload: {
+        filename: file.name,
+        progress: 0,
+      },
+    };
+    connection.write(JSON.stringify(data));
 
     // Transport file recursively
     readInChunks(file, {
       onRead(chunk, { progress }) {
-        if (progress === 100) {
-          // Notify by WebRTC that file transport is complete
-          const data: RTCSerialData = {
-            type: "fileTransport/done",
-            payload: {
-              filename: file.name,
-            },
-          };
-          connection.write(JSON.stringify(data));
+        setSendingFile((old) => ({ ...old, progress }));
 
-          setIsSendingFile(false);
-          toast.success(`Sent ${file.name}`);
-          // return setFile(undefined);
-          return;
-        }
+        const fileData = new Uint8Array(chunk);
+        connection.write(fileData);
 
-        const data = new Uint8Array(chunk);
-        connection.write(data);
+        const data: RTCSerialData = {
+          type: "fileTransport",
+          payload: {
+            name: file.name,
+            progress,
+          },
+        };
+        connection.write(JSON.stringify(data));
+      },
+      onSuccess() {
+        // Notify by WebRTC that file transport is complete
+        const data: RTCSerialData = {
+          type: "fileTransport",
+          payload: {
+            name: file.name,
+            progress: 100,
+          },
+        };
+        connection.write(JSON.stringify(data));
+
+        setFile(undefined);
+        setSendingFile(undefined);
+        toast.success(`Sent ${file.name}`);
       },
     });
   }
@@ -189,20 +210,20 @@ export default function Home() {
 
     function handleWorkerMessage(event) {
       const stream = event.data.stream();
-      const fileStream = streamSaver?.createWriteStream(receivedFile);
+      const fileStream = streamSaver?.createWriteStream(receivingFile.name);
       stream.pipeTo(fileStream);
     }
 
     function handleData(chunk) {
-      const isDone = chunk.toString().includes("payload");
-      if (isDone) {
-        console.log("is done");
-
+      const isSerialData = chunk.toString().includes("payload");
+      if (isSerialData) {
         const data: RTCSerialData = JSON.parse(chunk);
-        setReceivedFile(data.payload.filename);
-      } else {
-        console.log("receiving ");
-        worker.postMessage(chunk);
+        if (data.type === "fileTransport") {
+          setReceivingFile(data.payload);
+        } else {
+          // File chunk
+          worker.postMessage(chunk);
+        }
       }
     }
 
@@ -217,7 +238,6 @@ export default function Home() {
     }
 
     function handleError(error) {
-      console.log(error);
       if (error.code === "ERR_DATA_CHANNEL") {
         handleClose();
       }
@@ -235,7 +255,7 @@ export default function Home() {
 
       worker.removeEventListener("message", handleWorkerMessage);
     };
-  }, [worker, connection, receivedFile]);
+  }, [worker, connection, receivingFile]);
 
   return (
     <div className={styles.container}>
@@ -256,18 +276,26 @@ export default function Home() {
                     >
                       {file ? file.name : "Select or Drop files here"}
                     </FileInput>
-                    <button
-                      className={styles.sendFileButton}
-                      disabled={isSendingFile || !file}
-                      onClick={handleSendFile}
-                    >
-                      {isSendingFile ? "Sending..." : "Send"}
-                    </button>
+                    {(file || sendingFile) && (
+                      <button
+                        className={styles.sendFileButton}
+                        disabled={!!sendingFile}
+                        onClick={handleSendFile}
+                      >
+                        {sendingFile
+                          ? `Sending (${Math.floor(sendingFile.progress)}%)`
+                          : "Send"}
+                      </button>
+                    )}
                   </div>
-                  {receivedFile && (
+                  {receivingFile?.progress < 100 ? (
+                    <p>{receivingFile.progress}%</p>
+                  ) : null}
+                  {receivingFile?.progress === 100 && (
                     <div>
                       <p>
-                        Your peer has sent you <strong>{receivedFile}</strong>
+                        Your peer has sent you{" "}
+                        <strong>{receivingFile.name}</strong>
                       </p>
                       <button
                         onClick={downloadFile}
