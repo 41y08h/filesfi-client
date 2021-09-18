@@ -53,6 +53,7 @@ const FileInput: FC<Props> = ({
         type="file"
         className="hidden"
         id="fileUpload"
+        value="" // to fire onChange on every file select (not only change in selected file)
         onChange={(event) => onChange(event.target.files)}
       />
     </label>
