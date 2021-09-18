@@ -13,6 +13,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import formatFileSize from "../utils/formatFileSize";
 import copy from "copy-to-clipboard";
+import Progress from "../components/Progress";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCSerialDataType = "fileTransport";
@@ -330,22 +331,29 @@ export default function Home() {
               leaveTo={styles.leaveTo}
             >
               <Dialog.Title>{sendingFile ? "Sending" : "Send"}</Dialog.Title>
-              <Dialog.Description className={styles.description}>
-                {sendingFile ? sendingFile.name : file?.name}{" "}
+              <div className={styles.fileInfo}>
                 <small>
-                  ({formatFileSize(sendingFile?.size ?? file?.size)})
+                  File: {sendingFile ? sendingFile.name : file?.name}{" "}
                 </small>
-              </Dialog.Description>
+                <small>
+                  Size: {formatFileSize(sendingFile?.size ?? file?.size)}
+                </small>
+              </div>
 
-              {sendingFile && (
-                <progress
-                  className={styles.progress}
-                  value={sendingFile?.progress / 100}
-                />
-              )}
-              <button className={styles.sendButton} onClick={handleSendFile}>
-                Send
-              </button>
+              {sendingFile && <Progress className={styles.progress} value={sendingFile?.progress / 100} />}
+              <div className={styles.actionButtons}>
+                <button onClick={() => setIsSendingModalOpen(false)}>
+                  Cancel
+                </button>
+                {!sendingFile && (
+                  <button
+                    className={styles.sendButton}
+                    onClick={handleSendFile}
+                  >
+                    Send
+                  </button>
+                )}
+              </div>
             </Transition.Child>
           </Dialog>
         </Transition>

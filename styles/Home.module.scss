@@ -121,20 +121,34 @@ $primaryColor: #300a24;
     border: 1px solid #fff;
     z-index: 20;
     padding: 1.4rem;
+    width: 100%;
+    max-width: 440px;
+
+    > .fileInfo {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+    }
 
     > .progress {
-      width: 100%;
-    }
-    > .description {
       margin-top: 0.5rem;
     }
 
-    .sendButton {
-      margin-left: auto;
-      width: fit-content;
-      @include buttonBorder();
-      padding: 4px 8px;
-      font-size: 1rem;
+    > .actionButtons {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: space-between;
+      > button:not(:last-child) {
+        margin-right: 0.5rem;
+      }
+
+      button {
+        @include buttonBorder();
+        padding: 4px 8px;
+        font-size: 1rem;
+        color: white;
+        width: 100%;
+      }
     }
 
     &.enter {
