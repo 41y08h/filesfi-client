@@ -8,7 +8,7 @@ import socket from "../RTCs/socket";
 import useEventSubscription from "../hooks/useEventSubscription";
 import useClientSideInit from "../hooks/useClientSideInit";
 import { toast } from "react-toastify";
-import readInChunks from "../utils/readInChunks";
+import readInChunks, { stopReadingInChunks } from "../utils/readInChunks";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import formatFileSize from "../utils/formatFileSize";
@@ -16,9 +16,12 @@ import copy from "copy-to-clipboard";
 import Progress from "../components/Progress";
 
 type SignalingState = "idle" | "connecting" | "connected";
-type RTCSerialDataType = "fileTransport";
-type RTCSerialData<T = any> = { type: RTCSerialDataType; payload: T };
-type FileTransport = { name: string; size: number; progress: number };
+type RTCSerialDataType =
+  | "fileTransport/fileInfo"
+  | "fileTransport/sendingCancelled"
+  | "fileTransport/receivingCancelled";
+type RTCSerialData<T = any> = { type: RTCSerialDataType; payload?: T };
+type FileTransportInfo = { name: string; size: number; progress: number };
 
 export default function Home() {
   // WebSocket
@@ -36,10 +39,12 @@ export default function Home() {
   const [connection, setConnection] = useState<SimplePeerInstance>();
 
   const [file, setFile] = useState<File>();
-  const [receivingFile, setReceivingFile] = useState<FileTransport>();
-  const [sendingFile, setSendingFile] = useState<FileTransport>();
+  const [receivingFile, setReceivingFile] = useState<FileTransportInfo>();
+  const [sendingFile, setSendingFile] = useState<FileTransportInfo>();
   const [isSendingModalOpen, setIsSendingModalOpen] = useState(false);
   const [isReceivingModalOpen, setIsReceivingModalOpen] = useState(false);
+
+  const [sendingFileChunkingId, setSendingFileChunkingId] = useState<string>();
 
   // File transport
   const worker = useClientSideInit(() => new Worker("/worker.js"));
@@ -162,12 +167,12 @@ export default function Home() {
     if (file) setIsSendingModalOpen(true);
   };
 
-  function handleSendFile() {
+  async function handleSendFile() {
     setSendingFile({ name: file.name, size: file.size, progress: 0 });
     setIsSendingModalOpen(true);
 
-    const data: RTCSerialData<FileTransport> = {
-      type: "fileTransport",
+    const data: RTCSerialData<FileTransportInfo> = {
+      type: "fileTransport/fileInfo",
       payload: {
         name: file.name,
         size: file.size,
@@ -177,15 +182,15 @@ export default function Home() {
     connection.write(JSON.stringify(data));
 
     // Transport file recursively
-    readInChunks(file, {
+    const chunkingId = readInChunks(file, {
       onRead(chunk, { progress }) {
         setSendingFile((old) => ({ ...old, progress }));
 
         const fileData = new Uint8Array(chunk);
         connection.write(fileData);
 
-        const data: RTCSerialData<FileTransport> = {
-          type: "fileTransport",
+        const data: RTCSerialData<FileTransportInfo> = {
+          type: "fileTransport/fileInfo",
           payload: {
             name: file.name,
             size: file.size,
@@ -195,9 +200,10 @@ export default function Home() {
         connection.write(JSON.stringify(data));
       },
       onSuccess() {
+        console.log("onSuccess");
         // Notify by WebRTC that file transport is complete
-        const data: RTCSerialData<FileTransport> = {
-          type: "fileTransport",
+        const data: RTCSerialData<FileTransportInfo> = {
+          type: "fileTransport/fileInfo",
           payload: {
             name: file.name,
             size: file.size,
@@ -211,11 +217,24 @@ export default function Home() {
         toast.success(`Sent ${file.name}`);
       },
     });
+
+    setSendingFileChunkingId(chunkingId);
   }
 
-  function downloadFile() {
+  function saveFile() {
     // Initiate download
-    worker.postMessage("downloadFile");
+    worker.postMessage("saveFile");
+  }
+
+  function stopSendingFile() {
+    stopReadingInChunks(sendingFileChunkingId);
+    setSendingFileChunkingId(undefined);
+    setIsSendingModalOpen(false);
+
+    const data: RTCSerialData = {
+      type: "fileTransport/sendingCancelled",
+    };
+    connection.write(JSON.stringify(data));
   }
 
   useEffect(() => {
@@ -228,16 +247,20 @@ export default function Home() {
     }
 
     function handleData(chunk) {
-      const isSerialData = chunk.toString().includes("payload");
+      const isSerialData = chunk.toString().includes("type");
       if (isSerialData) {
         const data: RTCSerialData = JSON.parse(chunk);
-        if (data.type === "fileTransport") {
+        if (data.type === "fileTransport/fileInfo") {
           setReceivingFile(data.payload);
           setIsReceivingModalOpen(true);
-        } else {
-          // File chunk
-          worker.postMessage(chunk);
+        } else if (data.type === "fileTransport/sendingCancelled") {
+          setIsReceivingModalOpen(false);
+          worker.postMessage("clearReceivedChunks");
+          toast.info("Transfer has been aborted");
         }
+      } else {
+        // File chunk
+        worker.postMessage(chunk);
       }
     }
 
@@ -282,7 +305,7 @@ export default function Home() {
               <button
                 className={styles.copyButton}
                 onClick={() => {
-                  copy(id);
+                  copy(id.toString());
                   toast.success("Copied");
                 }}
               >
@@ -340,9 +363,20 @@ export default function Home() {
                 </small>
               </div>
 
-              {sendingFile && <Progress className={styles.progress} value={sendingFile?.progress / 100} />}
+              {sendingFile && (
+                <Progress
+                  className={styles.progress}
+                  value={sendingFile?.progress / 100}
+                />
+              )}
               <div className={styles.actionButtons}>
-                <button onClick={() => setIsSendingModalOpen(false)}>
+                <button
+                  onClick={() =>
+                    sendingFile
+                      ? stopSendingFile()
+                      : setIsSendingModalOpen(false)
+                  }
+                >
                   Cancel
                 </button>
                 {!sendingFile && (
@@ -358,12 +392,21 @@ export default function Home() {
           </Dialog>
         </Transition>
 
-        <Transition appear show={isReceivingModalOpen} as={Fragment}>
+        <Transition
+          appear
+          as={Fragment}
+          show={isReceivingModalOpen}
+          afterLeave={() => {
+            setReceivingFile(undefined);
+          }}
+        >
           <Dialog
             as="div"
             className={styles.modal}
             onClose={() => {
-              if (!isReceivingModalOpen) setReceivingFile(undefined);
+              // When download complete
+              if (receivingFile?.progress === 100)
+                setIsReceivingModalOpen(false);
             }}
           >
             <Transition.Child
@@ -391,20 +434,23 @@ export default function Home() {
                   ? "Download Complete"
                   : "Receiving"}
               </Dialog.Title>
-              <Dialog.Description className={styles.description}>
-                {receivingFile?.name}{" "}
-                <small>({formatFileSize(receivingFile?.size)})</small>
-              </Dialog.Description>
-
-              {receivingFile?.progress === 100 ? (
-                <button onClick={downloadFile}>Download</button>
-              ) : (
-                <progress
+              <div className={styles.fileInfo}>
+                <small>File: {receivingFile?.name}</small>
+                <small>Size: {formatFileSize(receivingFile?.size)}</small>
+              </div>
+              {receivingFile?.progress < 100 && (
+                <Progress
                   className={styles.progress}
                   value={receivingFile?.progress / 100}
                 />
               )}
-              <button>Cancel</button>
+
+              <div className={styles.actionButtons}>
+                <button>Cancel</button>
+                {receivingFile?.progress === 100 && (
+                  <button onClick={saveFile}>Save</button>
+                )}
+              </div>
             </Transition.Child>
           </Dialog>
         </Transition>

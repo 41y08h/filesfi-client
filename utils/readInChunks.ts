@@ -1,3 +1,6 @@
+import { v4 as uuid } from "uuid";
+import blobToArrayBuffer from "./blobToArrayBuffer";
+
 type ReadInChunksFn = (
   file: File,
   options?: {
@@ -5,35 +8,42 @@ type ReadInChunksFn = (
     onSuccess?: Function;
     onRead?: (chunk: ArrayBuffer, status: { progress: number }) => unknown;
   }
-) => void;
+) => string;
+
+let runningProcesses: string[] = [];
 
 const readInChunks: ReadInChunksFn = (
   file,
-  { chunkSize = 64 * 1000, onSuccess, onRead }
+  { chunkSize = 64 * 1000, onSuccess, onRead } = {}
 ) => {
+  const processId = uuid();
+
+  runningProcesses = [...runningProcesses, processId];
   readChunk();
 
-  function readChunk(startPosition = 0) {
-    const reader = new FileReader();
+  async function readChunk(startPosition = 0) {
+    let isRunning = runningProcesses.includes(processId);
 
     const endPosition = startPosition + chunkSize;
-    const nextStartPosition = endPosition;
-
     const blob = file.slice(startPosition, endPosition, file.type);
+    const chunk = await blobToArrayBuffer(blob);
+    isRunning = runningProcesses.includes(processId);
+    if (!isRunning) return;
 
-    reader.readAsArrayBuffer(blob);
+    const isDone = endPosition > file.size;
+    const progress = isDone ? 100 : (endPosition / file.size) * 100;
 
-    reader.addEventListener("load", (event) => {
-      const chunk = event.target.result as ArrayBuffer;
+    if (onRead) onRead(chunk, { progress });
 
-      const progress =
-        endPosition > file.size ? 100 : (endPosition / file.size) * 100;
-      onRead && onRead(chunk, { progress });
-
-      if (endPosition < file.size) readChunk(nextStartPosition);
-      else onSuccess && onSuccess();
-    });
+    if (endPosition < file.size) readChunk(endPosition);
+    else if (onSuccess) onSuccess();
   }
+
+  return processId;
 };
+
+export function stopReadingInChunks(processId: string) {
+  runningProcesses = runningProcesses.filter((id) => id !== processId);
+}
 
 export default readInChunks;
