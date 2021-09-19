@@ -28,6 +28,7 @@ type FileTransportInfo2 = {
   name: string;
   size: number;
   progress: number;
+  direction: "up" | "down";
 };
 
 export default function Home() {
@@ -54,6 +55,7 @@ export default function Home() {
   const [sendingFileChunkingId, setSendingFileChunkingId] = useState<string>();
 
   const [filesTimeline, setFilesTimeline] = useState<FileTransportInfo2[]>([]);
+  const [savingFileId, setSavingFileId] = useState<string>();
 
   // File transport
   const worker = useClientSideInit(() => new Worker("/worker.js"));
@@ -185,6 +187,7 @@ export default function Home() {
         name: file.name,
         size: file.size,
         progress: 0,
+        direction: "up",
       },
     };
     connection.write(JSON.stringify(data));
@@ -208,6 +211,7 @@ export default function Home() {
             name: file.name,
             size: file.size,
             progress,
+            direction: "up",
           },
         };
         connection.write(JSON.stringify(data));
@@ -219,9 +223,8 @@ export default function Home() {
     setIsSendingModalOpen(false);
   }
 
-  function saveFile() {
-    // Initiate download
-    worker.postMessage("saveFile");
+  function saveFile(fileId: string) {
+    worker.postMessage({ name: "saveFile", data: fileId });
   }
 
   function stopSendingFile() {
@@ -239,9 +242,20 @@ export default function Home() {
     if (!worker || !connection) return;
 
     function handleWorkerMessage(event) {
-      const stream = event.data.stream();
-      const fileStream = streamSaver?.createWriteStream(receivingFile.name);
-      stream.pipeTo(fileStream);
+      return console.log(event.data);
+      if (event.data.toString().includes("savingFileId")) {
+        const fileId = event.data.split(":")[1];
+        setSavingFileId(fileId);
+      } else {
+        console.log(savingFileId);
+        const file = filesTimeline.find((file) => file.id === savingFileId);
+        console.log("file", file);
+        if (!file) return;
+
+        const stream = event.data.stream();
+        const fileStream = streamSaver?.createWriteStream(file.name);
+        stream.pipeTo(fileStream);
+      }
     }
 
     function handleData(chunk) {
@@ -249,8 +263,22 @@ export default function Home() {
       if (isSerialData) {
         const data: RTCSerialData = JSON.parse(chunk);
         if (data.type === "fileTransport/fileInfo") {
-          setReceivingFile(data.payload);
-          setIsReceivingModalOpen(true);
+          const file: FileTransportInfo2 = {
+            ...data.payload,
+            direction: "down",
+          };
+
+          if (file.progress < 100)
+            worker.postMessage(`currentFileId:${file.id}`);
+
+          const isNew = file.progress === 0;
+          isNew
+            ? setFilesTimeline((old) => [...old, file])
+            : setFilesTimeline((old) =>
+                old.map((timelineFile) =>
+                  timelineFile.id === file.id ? file : timelineFile
+                )
+              );
         } else if (data.type === "fileTransport/sendingCancelled") {
           setIsReceivingModalOpen(false);
           worker.postMessage("clearReceivedChunks");
@@ -290,7 +318,7 @@ export default function Home() {
 
       worker.removeEventListener("message", handleWorkerMessage);
     };
-  }, [worker, connection, receivingFile]);
+  }, [worker, connection, receivingFile, savingFileId]);
 
   return (
     <div className={styles.container}>
@@ -376,17 +404,31 @@ export default function Home() {
                 {file ? file.name : "Select or drop files here"}
               </FileInput>
               <div>
-                {filesTimeline.map((file) => (
-                  <div className={styles.file}>
-                    <p>
-                      {file.name} ({formatFileSize(file.size)}) /{" "}
-                      {file.progress < 100
-                        ? `${Math.floor(file.progress)}%`
-                        : "Sent"}
-                    </p>
-                    {file.progress < 100 && <button>Cancel</button>}
-                  </div>
-                ))}
+                {filesTimeline.map((file) => {
+                  const transportStatus =
+                    file.direction === "up" ? "Sent" : "Received";
+
+                  return (
+                    <div className={styles.file} key={file.id}>
+                      <p>
+                        {file.name} ({formatFileSize(file.size)}) /{" "}
+                        {file.progress < 100
+                          ? `${Math.floor(file.progress)}% ${transportStatus}`
+                          : transportStatus}
+                      </p>
+
+                      {file.progress < 100 ? (
+                        <button>Cancel</button>
+                      ) : (
+                        file.direction === "down" && (
+                          <button onClick={() => saveFile(file.id)}>
+                            Save
+                          </button>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
