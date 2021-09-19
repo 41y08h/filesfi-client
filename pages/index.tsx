@@ -14,6 +14,7 @@ import { Fragment } from "react";
 import formatFileSize from "../utils/formatFileSize";
 import copy from "copy-to-clipboard";
 import Progress from "../components/Progress";
+import { v4 as uuid } from "uuid";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCSerialDataType =
@@ -22,6 +23,12 @@ type RTCSerialDataType =
   | "fileTransport/receivingCancelled";
 type RTCSerialData<T = any> = { type: RTCSerialDataType; payload?: T };
 type FileTransportInfo = { name: string; size: number; progress: number };
+type FileTransportInfo2 = {
+  id: string;
+  name: string;
+  size: number;
+  progress: number;
+};
 
 export default function Home() {
   // WebSocket
@@ -45,6 +52,8 @@ export default function Home() {
   const [isReceivingModalOpen, setIsReceivingModalOpen] = useState(false);
 
   const [sendingFileChunkingId, setSendingFileChunkingId] = useState<string>();
+
+  const [filesTimeline, setFilesTimeline] = useState<FileTransportInfo2[]>([]);
 
   // File transport
   const worker = useClientSideInit(() => new Worker("/worker.js"));
@@ -168,12 +177,11 @@ export default function Home() {
   };
 
   async function handleSendFile() {
-    setSendingFile({ name: file.name, size: file.size, progress: 0 });
-    setIsSendingModalOpen(true);
-
-    const data: RTCSerialData<FileTransportInfo> = {
+    const fileId = uuid();
+    const data: RTCSerialData<FileTransportInfo2> = {
       type: "fileTransport/fileInfo",
       payload: {
+        id: fileId,
         name: file.name,
         size: file.size,
         progress: 0,
@@ -181,17 +189,22 @@ export default function Home() {
     };
     connection.write(JSON.stringify(data));
 
-    // Transport file recursively
+    // Transport file in chunks
     const chunkingId = readInChunks(file, {
       onRead(chunk, { progress }) {
-        setSendingFile((old) => ({ ...old, progress }));
+        setFilesTimeline((timeline) =>
+          timeline.map((file) =>
+            file.id === fileId ? { ...file, progress } : file
+          )
+        );
 
         const fileData = new Uint8Array(chunk);
         connection.write(fileData);
 
-        const data: RTCSerialData<FileTransportInfo> = {
+        const data: RTCSerialData<FileTransportInfo2> = {
           type: "fileTransport/fileInfo",
           payload: {
+            id: fileId,
             name: file.name,
             size: file.size,
             progress,
@@ -199,26 +212,11 @@ export default function Home() {
         };
         connection.write(JSON.stringify(data));
       },
-      onSuccess() {
-        console.log("onSuccess");
-        // Notify by WebRTC that file transport is complete
-        const data: RTCSerialData<FileTransportInfo> = {
-          type: "fileTransport/fileInfo",
-          payload: {
-            name: file.name,
-            size: file.size,
-            progress: 100,
-          },
-        };
-        connection.write(JSON.stringify(data));
-
-        setFile(undefined);
-        setIsSendingModalOpen(false);
-        toast.success(`Sent ${file.name}`);
-      },
     });
 
-    setSendingFileChunkingId(chunkingId);
+    // Insert into file timeline
+    setFilesTimeline((old) => [...old, { ...data.payload, chunkingId }]);
+    setIsSendingModalOpen(false);
   }
 
   function saveFile() {
@@ -321,17 +319,12 @@ export default function Home() {
           appear
           show={isSendingModalOpen}
           as={Fragment}
-          afterLeave={() => {
-            setFile(undefined);
-            setSendingFile(undefined);
-          }}
+          afterLeave={() => setFile(undefined)}
         >
           <Dialog
             as="div"
             className={styles.modal}
-            onClose={() => {
-              if (!sendingFile) setIsSendingModalOpen(false);
-            }}
+            onClose={() => setIsSendingModalOpen(false)}
           >
             <Transition.Child
               as={Fragment}
@@ -353,103 +346,19 @@ export default function Home() {
               leaveFrom={styles.leaveFrom}
               leaveTo={styles.leaveTo}
             >
-              <Dialog.Title>{sendingFile ? "Sending" : "Send"}</Dialog.Title>
+              <Dialog.Title>Send</Dialog.Title>
               <div className={styles.fileInfo}>
-                <small>
-                  File: {sendingFile ? sendingFile.name : file?.name}{" "}
-                </small>
-                <small>
-                  Size: {formatFileSize(sendingFile?.size ?? file?.size)}
-                </small>
+                <small>File: {file?.name}</small>
+                <small>Size: {formatFileSize(file?.size)}</small>
               </div>
 
-              {sendingFile && (
-                <Progress
-                  className={styles.progress}
-                  value={sendingFile?.progress / 100}
-                />
-              )}
               <div className={styles.actionButtons}>
-                <button
-                  onClick={() =>
-                    sendingFile
-                      ? stopSendingFile()
-                      : setIsSendingModalOpen(false)
-                  }
-                >
+                <button onClick={() => setIsSendingModalOpen(false)}>
                   Cancel
                 </button>
-                {!sendingFile && (
-                  <button
-                    className={styles.sendButton}
-                    onClick={handleSendFile}
-                  >
-                    Send
-                  </button>
-                )}
-              </div>
-            </Transition.Child>
-          </Dialog>
-        </Transition>
-
-        <Transition
-          appear
-          as={Fragment}
-          show={isReceivingModalOpen}
-          afterLeave={() => {
-            setReceivingFile(undefined);
-          }}
-        >
-          <Dialog
-            as="div"
-            className={styles.modal}
-            onClose={() => {
-              // When download complete
-              if (receivingFile?.progress === 100)
-                setIsReceivingModalOpen(false);
-            }}
-          >
-            <Transition.Child
-              as={Fragment}
-              enter={styles.enter}
-              enterFrom={styles.enterFrom}
-              enterTo={styles.enterTo}
-              leave={styles.leave}
-              leaveFrom={styles.leaveFrom}
-              leaveTo={styles.leaveTo}
-            >
-              <Dialog.Overlay as="div" className={styles.backdrop} />
-            </Transition.Child>
-            <Transition.Child
-              as="main"
-              enter={styles.enter}
-              enterFrom={styles.enterFrom}
-              enterTo={styles.enterTo}
-              leave={styles.leave}
-              leaveFrom={styles.leaveFrom}
-              leaveTo={styles.leaveTo}
-            >
-              <Dialog.Title>
-                {receivingFile?.progress === 100
-                  ? "Download Complete"
-                  : "Receiving"}
-              </Dialog.Title>
-              <div className={styles.fileInfo}>
-                <small>File: {receivingFile?.name}</small>
-                <small>Size: {formatFileSize(receivingFile?.size)}</small>
-              </div>
-              {receivingFile?.progress < 100 && (
-                <Progress
-                  className={styles.progress}
-                  value={receivingFile?.progress / 100}
-                />
-              )}
-
-              <div className={styles.actionButtons}>
-                <button>Cancel</button>
-                {receivingFile?.progress === 100 && (
-                  <button onClick={saveFile}>Save</button>
-                )}
+                <button className={styles.sendButton} onClick={handleSendFile}>
+                  Send
+                </button>
               </div>
             </Transition.Child>
           </Dialog>
@@ -466,6 +375,19 @@ export default function Home() {
               >
                 {file ? file.name : "Select or drop files here"}
               </FileInput>
+              <div>
+                {filesTimeline.map((file) => (
+                  <div className={styles.file}>
+                    <p>
+                      {file.name} ({formatFileSize(file.size)}) /{" "}
+                      {file.progress < 100
+                        ? `${Math.floor(file.progress)}%`
+                        : "Sent"}
+                    </p>
+                    {file.progress < 100 && <button>Cancel</button>}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

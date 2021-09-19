@@ -67,11 +67,22 @@ $primaryColor: #300a24;
 
   .fileInput {
     outline: none;
-    height: 300px;
+    height: 100px;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
+  }
+  .file {
+    border: 1px solid white;
+    padding: 2px 4px;
+    display: flex;
+    justify-content: space-between;
+
+    > button {
+      color: white;
+      font-size: 0.8rem;
+    }
   }
 }
 

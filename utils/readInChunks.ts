@@ -5,7 +5,6 @@ type ReadInChunksFn = (
   file: File,
   options?: {
     chunkSize?: number;
-    onSuccess?: Function;
     onRead?: (chunk: ArrayBuffer, status: { progress: number }) => unknown;
   }
 ) => string;
@@ -14,7 +13,7 @@ let runningProcesses: string[] = [];
 
 const readInChunks: ReadInChunksFn = (
   file,
-  { chunkSize = 64 * 1000, onSuccess, onRead } = {}
+  { chunkSize = 64 * 1000, onRead } = {}
 ) => {
   const processId = uuid();
 
@@ -34,9 +33,7 @@ const readInChunks: ReadInChunksFn = (
     const progress = isDone ? 100 : (endPosition / file.size) * 100;
 
     if (onRead) onRead(chunk, { progress });
-
     if (endPosition < file.size) readChunk(endPosition);
-    else if (onSuccess) onSuccess();
   }
 
   return processId;
