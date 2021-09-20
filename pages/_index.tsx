@@ -18,14 +18,14 @@ import { v4 as uuid } from "uuid";
 import RTCDataTransport, {
   RTCDataTransportInstance,
 } from "../utils/RTCDataTransport";
+import streamSaver from "streamsaver";
 
 type SignalingState = "idle" | "connecting" | "connected";
-type RTCSerialDataType =
+type RTCTransportDataType =
   | "fileTransport/fileInfo"
   | "fileTransport/sendingCancelled"
   | "fileTransport/receivingCancelled";
-type RTCSerialData<T = any> = { type: RTCSerialDataType; data?: T };
-type FileTransportInfo = { name: string; size: number; progress: number };
+type RTCTransportData<T = any> = { type: RTCTransportDataType; payload?: T };
 type FileInfo = {
   id: string;
   name: string;
@@ -59,15 +59,10 @@ export default function Home() {
   const [connection, setConnection] = useState<SimplePeerInstance>();
 
   const [file, setFile] = useState<File>();
-  const [receivingFile, setReceivingFile] = useState<FileTransportInfo>();
-  const [sendingFile, setSendingFile] = useState<FileTransportInfo>();
   const [isSendingModalOpen, setIsSendingModalOpen] = useState(false);
-  const [isReceivingModalOpen, setIsReceivingModalOpen] = useState(false);
 
-  const [sendingFileChunkingId, setSendingFileChunkingId] = useState<string>();
+  const worker = useMemo(() => new Worker("/worker.js"), []);
 
-  const [filesTimeline, setFilesTimeline] = useState<FileTransportInfo2[]>([]);
-  const [savingFileId, setSavingFileId] = useState<string>();
   const rtcDataTransport = useMemo(
     () =>
       connection
@@ -76,10 +71,6 @@ export default function Home() {
     [connection]
   );
   const [timelineFiles, setTimelineFiles] = useState<TimelineFile[]>([]);
-
-  // File transport
-  const worker = useClientSideInit(() => new Worker("/worker.js"));
-  const streamSaver = useClientSideInit(() => require("streamsaver"));
 
   // WebSocket connectivity
   useEventSubscription("connect", () => {
@@ -200,9 +191,9 @@ export default function Home() {
 
   async function handleSendFile() {
     const fileId = uuid();
-    const fileInfo: RTCSerialData<FileInfo> = {
+    const fileInfo: RTCTransportData<FileInfo> = {
       type: "fileTransport/fileInfo",
-      data: {
+      payload: {
         id: fileId,
         name: file.name,
         size: file.size,
@@ -221,13 +212,13 @@ export default function Home() {
           )
         );
 
-        rtcDataTransport.send<RTCSerialData<FileInfo>>({
+        rtcDataTransport.send<RTCTransportData<FileInfo>>({
           type: "fileTransport/fileInfo",
-          data: {
+          payload: {
             id: fileId,
             name: file.name,
             size: file.size,
-            progress: 0,
+            progress,
             chunk: new Uint8Array(chunk),
           },
         });
@@ -237,21 +228,19 @@ export default function Home() {
     // Update timeline
     setTimelineFiles((old) => [
       ...old,
-      { ...fileInfo.data, direction: "up", chunkingId },
+      { ...fileInfo.payload, direction: "up", chunkingId },
     ]);
     setIsSendingModalOpen(false);
   }
 
   function saveFile(fileId: string) {
-    worker.postMessage({ name: "saveFile", data: fileId });
+    worker.postMessage({ type: "saveFile", payload: { fileId } });
   }
 
   function stopSendingFile() {
-    stopReadingInChunks(sendingFileChunkingId);
-    setSendingFileChunkingId(undefined);
     setIsSendingModalOpen(false);
 
-    const data: RTCSerialData = {
+    const data: RTCTransportData = {
       type: "fileTransport/sendingCancelled",
     };
     connection.write(JSON.stringify(data));
@@ -261,52 +250,52 @@ export default function Home() {
     if (!worker || !connection) return;
 
     function handleWorkerMessage(event) {
-      return console.log(event.data);
-      if (event.data.toString().includes("savingFileId")) {
-        const fileId = event.data.split(":")[1];
-        setSavingFileId(fileId);
-      } else {
-        console.log(savingFileId);
-        const file = filesTimeline.find((file) => file.id === savingFileId);
+      if (event.data.type === "saveFile/callback") {
+        const { fileId, blob } = event.data.payload;
+        const file = timelineFiles.find((file) => file.id === fileId);
+
         console.log("file", file);
         if (!file) return;
 
-        const stream = event.data.stream();
+        const stream = blob.stream();
         const fileStream = streamSaver?.createWriteStream(file.name);
         stream.pipeTo(fileStream);
       }
     }
 
     function handleData(chunk) {
-      const isSerialData = chunk.toString().includes("type");
-      if (isSerialData) {
-        const data: RTCSerialData = JSON.parse(chunk);
+      rtcDataTransport.handleData<RTCTransportData<FileInfo>>(chunk, (data) => {
         if (data.type === "fileTransport/fileInfo") {
-          const file: FileTransportInfo2 = {
-            ...data.payload,
+          const file: TimelineFile = {
+            id: data.payload.id,
+            name: data.payload.name,
+            size: data.payload.size,
+            progress: data.payload.progress,
             direction: "down",
           };
 
-          if (file.progress < 100)
-            worker.postMessage(`currentFileId:${file.id}`);
-
+          // Update timeline files
           const isNew = file.progress === 0;
-          isNew
-            ? setFilesTimeline((old) => [...old, file])
-            : setFilesTimeline((old) =>
-                old.map((timelineFile) =>
-                  timelineFile.id === file.id ? file : timelineFile
-                )
-              );
-        } else if (data.type === "fileTransport/sendingCancelled") {
-          setIsReceivingModalOpen(false);
-          worker.postMessage("clearReceivedChunks");
-          toast.info("Transfer has been aborted");
+          if (isNew) {
+            setTimelineFiles((old) => [...old, file]);
+          } else {
+            setTimelineFiles((old) =>
+              old.map((timelineFile) =>
+                timelineFile.id === file.id ? file : timelineFile
+              )
+            );
+
+            // Send chunks to worker
+            worker.postMessage({
+              type: "fileChunk",
+              payload: {
+                fileId: data.payload.id,
+                chunk: data.payload.chunk,
+              },
+            });
+          }
         }
-      } else {
-        // File chunk
-        worker.postMessage(chunk);
-      }
+      });
     }
 
     function handleClose() {
@@ -337,7 +326,7 @@ export default function Home() {
 
       worker.removeEventListener("message", handleWorkerMessage);
     };
-  }, [worker, connection, receivingFile, savingFileId]);
+  }, [worker, connection, timelineFiles, rtcDataTransport]);
 
   return (
     <div className={styles.container}>
