@@ -1,26 +1,21 @@
-let array = [];
 const files = {};
-let currentFileId;
 
 self.addEventListener("message", (event) => {
-  if (event.data.includes("currentFileId:")) {
-    currentFileId = event.data.split(":")[1];
-  } else if (event.data.includes("saveFile")) {
-    const fileId = event.data.split(":")[1];
+  if (event.data.type === "fileChunk") {
+    const { fileId, chunk } = event.data.payload;
+    const isExisting = Boolean(files[fileId]);
+    if (isExisting) files[fileId].push(chunk);
+    else files[fileId] = [chunk];
+  } else if (event.data.type === "saveFile") {
+    const { fileId } = event.data.payload;
 
     const blob = new Blob(files[fileId]);
     self.postMessage({
-      name: "saveFile",
-      data: {
+      type: "saveFile/callback",
+      payload: {
         fileId,
         blob,
       },
     });
-  } else if (event.data === "clearReceivedChunks") {
-    array = [];
-  } else {
-    const isExisting = Boolean(files[currentFileId]);
-    if (isExisting) files[currentFileId].push(event.data);
-    else files[currentFileId] = [event.data];
   }
 });

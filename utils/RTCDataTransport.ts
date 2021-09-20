@@ -4,7 +4,7 @@ import readObjectValues from "./readObjectValues";
 
 export interface RTCDataTransportInstance {
   send: <Data>(object: Data) => void;
-  handleData: (chunk: any, onData: (data: Object) => unknown) => void;
+  handleData: <Data>(chunk: any, onData: (data: Data) => unknown) => void;
 }
 
 export default function RTCDataTransport(
@@ -12,11 +12,11 @@ export default function RTCDataTransport(
 ): RTCDataTransportInstance {
   let chunks = [];
 
-  function combineDataChunks(chunks: any[]) {
+  function combineDataChunks<Data>(chunks: any[]) {
     const schema = chunks[0];
     const values = chunks.slice(1);
 
-    const object: Object = JSON.parse(schema);
+    const object: Data = JSON.parse(schema);
 
     let valueIndex = 0;
     readObjectValues(object, (pathname, value) => {
@@ -86,11 +86,11 @@ export default function RTCDataTransport(
     rtcSend("chunks:done");
   }
 
-  function handleData(chunk: any, onData: (data: Object) => unknown) {
+  function handleData<Data>(chunk: any, onData: (data: Data) => unknown) {
     const isDone = chunk.toString() === "chunks:done";
 
     if (isDone) {
-      const data = combineDataChunks(chunks);
+      const data = combineDataChunks<Data>(chunks);
 
       chunks = []; // Reset
       onData(data);
