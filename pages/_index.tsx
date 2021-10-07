@@ -241,8 +241,6 @@ export default function Home() {
   function stopSendingFile(file?: TimelineFile) {
     if (file.direction !== "up") return;
 
-    setIsSendingModalOpen(false);
-
     rtcDataTransport.send({
       type: "fileTransport/sendingCancelled",
       payload: {
@@ -253,6 +251,26 @@ export default function Home() {
     // Stop chunking
     stopReadingInChunks(file.chunkingId);
     console.log(file.id);
+
+    // Update timeline
+    setTimelineFiles((timelineFiles) =>
+      timelineFiles.map((timelineFile) =>
+        timelineFile.id === file.id
+          ? { ...timelineFile, isCancelled: true }
+          : timelineFile
+      )
+    );
+  }
+
+  function stopReceivingFile(file?: TimelineFile) {
+    if (file.direction !== "down") return;
+
+    rtcDataTransport.send<RTCTransportData>({
+      type: "fileTransport/receivingCancelled",
+      payload: {
+        fileId: file.id,
+      },
+    });
 
     // Update timeline
     setTimelineFiles((timelineFiles) =>
@@ -282,8 +300,9 @@ export default function Home() {
     }
 
     function handleData(chunk) {
-      rtcDataTransport.handleData<RTCTransportData<FileInfo>>(chunk, (data) => {
+      rtcDataTransport.handleData<RTCTransportData>(chunk, (data) => {
         console.log(data.type);
+
         if (data.type === "fileTransport/fileInfo") {
           const file: TimelineFile = {
             id: data.payload.id,
@@ -301,7 +320,9 @@ export default function Home() {
           } else {
             setTimelineFiles((old) =>
               old.map((timelineFile) =>
-                timelineFile.id === file.id ? file : timelineFile
+                timelineFile.id === file.id
+                  ? { ...file, isCancelled: timelineFile.isCancelled }
+                  : timelineFile
               )
             );
 
@@ -322,6 +343,12 @@ export default function Home() {
                 ? { ...timelineFile, isCancelled: true }
                 : timelineFile
             )
+          );
+        } else if (data.type === "fileTransport/receivingCancelled") {
+          const { fileId } = data.payload;
+
+          stopSendingFile(
+            timelineFiles.find((timelineFile) => timelineFile.id === fileId)
           );
         }
       });
@@ -457,7 +484,13 @@ export default function Home() {
                       {file.isCancelled ? (
                         <p>Cancelled</p>
                       ) : file.progress < 100 ? (
-                        <button onClick={() => stopSendingFile(file)}>
+                        <button
+                          onClick={() =>
+                            file.direction === "up"
+                              ? stopSendingFile(file)
+                              : stopReceivingFile(file)
+                          }
+                        >
                           Cancel
                         </button>
                       ) : (
