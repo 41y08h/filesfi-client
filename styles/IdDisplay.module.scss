@@ -1,8 +1,6 @@
 .root {
   display: flex;
   > span {
-    width: 60px;
-    height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -10,5 +8,23 @@
     font-weight: 700;
     margin-right: 8px;
     border: 1px solid #ebebeb;
+  }
+}
+
+@media (min-width: 320px) {
+  .root span {
+    $square: 40px;
+
+    width: $square;
+    height: $square;
+  }
+}
+
+@media (min-width: 490px) {
+  .root span {
+    $square: 60px;
+
+    width: $square;
+    height: $square;
   }
 }

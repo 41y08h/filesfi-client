@@ -8,7 +8,8 @@ $primaryColor: #300a24;
 }
 
 .container {
-  padding: 48px;
+  padding: 30px 24px 20px;
+
   background: $primaryColor;
   color: white;
   height: 100vh;
@@ -51,6 +52,10 @@ $primaryColor: #300a24;
     color: white;
     border: 1px solid white;
     box-shadow: 2px 2px #fff;
+
+    @media (max-width: 468px) {
+      margin-bottom: 1rem;
+    }
   }
   > button {
     font-size: inherit;
