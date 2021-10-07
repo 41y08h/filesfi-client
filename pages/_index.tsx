@@ -62,6 +62,8 @@ export default function Home() {
   const [file, setFile] = useState<File>();
   const [isSendingModalOpen, setIsSendingModalOpen] = useState(false);
 
+  const sendButtonRef = useRef<HTMLButtonElement>();
+
   const worker = useMemo(() => new Worker("/worker.js"), []);
 
   const rtcDataTransport = useMemo(
@@ -412,6 +414,10 @@ export default function Home() {
           show={isSendingModalOpen}
           as={Fragment}
           afterLeave={() => setFile(undefined)}
+          afterEnter={() => {
+            const sendButton = sendButtonRef.current;
+            sendButton.focus();
+          }}
         >
           <Dialog
             as="div"
@@ -448,7 +454,11 @@ export default function Home() {
                 <button onClick={() => setIsSendingModalOpen(false)}>
                   Cancel
                 </button>
-                <button className={styles.sendButton} onClick={handleSendFile}>
+                <button
+                  ref={sendButtonRef}
+                  className={styles.sendButton}
+                  onClick={handleSendFile}
+                >
                   Send
                 </button>
               </div>
@@ -516,6 +526,7 @@ export default function Home() {
                   ref={peerIdInputRef}
                   type="number"
                   placeholder="Connect to ID"
+                  autoFocus
                 />
                 <button
                   type="submit"
