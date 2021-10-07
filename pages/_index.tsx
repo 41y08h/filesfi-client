@@ -386,6 +386,11 @@ export default function Home() {
     };
   }, [worker, connection, timelineFiles, rtcDataTransport]);
 
+  function handleIdCopy() {
+    copy(id.toString());
+    toast.success("Copied", { pauseOnFocusLoss: false });
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -394,13 +399,7 @@ export default function Home() {
             <p className={styles.idHeading}>Your ID</p>
             <div className={styles.idContainer}>
               <IdDisplay id={id} />
-              <button
-                className={styles.copyButton}
-                onClick={() => {
-                  copy(id.toString());
-                  toast.success("Copied");
-                }}
-              >
+              <button className={styles.copyButton} onClick={handleIdCopy}>
                 📋
               </button>
             </div>
