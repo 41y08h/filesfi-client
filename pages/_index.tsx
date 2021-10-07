@@ -41,6 +41,7 @@ interface TimelineFile {
   progress: number;
   direction: "up" | "down";
   chunkingId?: string;
+  isCancelled: boolean;
 }
 
 export default function Home() {
@@ -228,7 +229,7 @@ export default function Home() {
     // Update timeline
     setTimelineFiles((old) => [
       ...old,
-      { ...fileInfo.payload, direction: "up", chunkingId },
+      { ...fileInfo.payload, direction: "up", chunkingId, isCancelled: false },
     ]);
     setIsSendingModalOpen(false);
   }
@@ -237,13 +238,30 @@ export default function Home() {
     worker.postMessage({ type: "saveFile", payload: { fileId } });
   }
 
-  function stopSendingFile() {
+  function stopSendingFile(file?: TimelineFile) {
+    if (file.direction !== "up") return;
+
     setIsSendingModalOpen(false);
 
-    const data: RTCTransportData = {
+    rtcDataTransport.send({
       type: "fileTransport/sendingCancelled",
-    };
-    connection.write(JSON.stringify(data));
+      payload: {
+        fileId: file.id,
+      },
+    });
+
+    // Stop chunking
+    stopReadingInChunks(file.chunkingId);
+    console.log(file.id);
+
+    // Update timeline
+    setTimelineFiles((timelineFiles) =>
+      timelineFiles.map((timelineFile) =>
+        timelineFile.id === file.id
+          ? { ...timelineFile, isCancelled: true }
+          : timelineFile
+      )
+    );
   }
 
   useEffect(() => {
@@ -265,6 +283,7 @@ export default function Home() {
 
     function handleData(chunk) {
       rtcDataTransport.handleData<RTCTransportData<FileInfo>>(chunk, (data) => {
+        console.log(data.type);
         if (data.type === "fileTransport/fileInfo") {
           const file: TimelineFile = {
             id: data.payload.id,
@@ -272,6 +291,7 @@ export default function Home() {
             size: data.payload.size,
             progress: data.payload.progress,
             direction: "down",
+            isCancelled: false,
           };
 
           // Update timeline files
@@ -294,6 +314,15 @@ export default function Home() {
               },
             });
           }
+        } else if (data.type === "fileTransport/sendingCancelled") {
+          const { fileId } = data.payload;
+          setTimelineFiles((timelineFiles) =>
+            timelineFiles.map((timelineFile) =>
+              timelineFile.id === fileId
+                ? { ...timelineFile, isCancelled: true }
+                : timelineFile
+            )
+          );
         }
       });
     }
@@ -419,14 +448,18 @@ export default function Home() {
                   return (
                     <div className={styles.file} key={file.id}>
                       <p>
-                        {file.name} ({formatFileSize(file.size)}) /{" "}
-                        {file.progress < 100
-                          ? `${Math.floor(file.progress)}% ${transportStatus}`
-                          : transportStatus}
+                        {file.name} ({formatFileSize(file.size)}){" "}
+                        {!file.isCancelled &&
+                          (file.progress < 100
+                            ? `${Math.floor(file.progress)}% ${transportStatus}`
+                            : transportStatus)}
                       </p>
-
-                      {file.progress < 100 ? (
-                        <button>Cancel</button>
+                      {file.isCancelled ? (
+                        <p>Cancelled</p>
+                      ) : file.progress < 100 ? (
+                        <button onClick={() => stopSendingFile(file)}>
+                          Cancel
+                        </button>
                       ) : (
                         file.direction === "down" && (
                           <button onClick={() => saveFile(file.id)}>

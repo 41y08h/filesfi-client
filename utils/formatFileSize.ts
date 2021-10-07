@@ -1,4 +1,4 @@
-export default function formatFileSize(bytes: number, si = true, dp = 1) {
+export default function formatFileSize(bytes: number, si = false, dp = 1) {
   const thresh = si ? 1000 : 1024;
 
   if (Math.abs(bytes) < thresh) {
@@ -6,8 +6,8 @@ export default function formatFileSize(bytes: number, si = true, dp = 1) {
   }
 
   const units = si
-    ? ["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-    : ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+    ? ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
+    : ["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
   let u = -1;
   const r = 10 ** dp;
 
