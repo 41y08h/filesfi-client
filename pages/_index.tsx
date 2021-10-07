@@ -206,6 +206,7 @@ export default function Home() {
     rtcDataTransport.send(fileInfo);
 
     // Transport file in chunks
+    // Chunking id is used to stop the process
     const chunkingId = readInChunks(file, {
       onRead(chunk, { progress }) {
         // Update progress state
@@ -391,6 +392,21 @@ export default function Home() {
     toast.success("Copied", { pauseOnFocusLoss: false });
   }
 
+  // Sending Modal
+
+  function handleSendingModalOpen() {
+    const sendButton = sendButtonRef.current;
+    sendButton.focus();
+  }
+
+  function handleSendingModalClose() {
+    setFile(undefined);
+  }
+
+  function handleDialogClose() {
+    setIsSendingModalOpen(false);
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.content}>
@@ -412,17 +428,10 @@ export default function Home() {
           appear
           show={isSendingModalOpen}
           as={Fragment}
-          afterLeave={() => setFile(undefined)}
-          afterEnter={() => {
-            const sendButton = sendButtonRef.current;
-            sendButton.focus();
-          }}
+          afterLeave={handleSendingModalClose}
+          afterEnter={handleSendingModalOpen}
         >
-          <Dialog
-            as="div"
-            className={styles.modal}
-            onClose={() => setIsSendingModalOpen(false)}
-          >
+          <Dialog as="div" className={styles.modal} onClose={handleDialogClose}>
             <Transition.Child
               as={Fragment}
               enter={styles.enter}
@@ -445,14 +454,12 @@ export default function Home() {
             >
               <Dialog.Title>Send</Dialog.Title>
               <div className={styles.fileInfo}>
-                <small>File: {file?.name}</small>
+                <small className="line-clamp-2">File: {file?.name}</small>
                 <small>Size: {formatFileSize(file?.size)}</small>
               </div>
 
               <div className={styles.actionButtons}>
-                <button onClick={() => setIsSendingModalOpen(false)}>
-                  Cancel
-                </button>
+                <button onClick={handleDialogClose}>Cancel</button>
                 <button
                   ref={sendButtonRef}
                   className={styles.sendButton}
