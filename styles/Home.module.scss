@@ -10,7 +10,6 @@ $primaryColor: #300a24;
 .container {
   padding: 30px 24px 20px;
 
-  background: $primaryColor;
   color: white;
   .content {
     max-width: 768px;
@@ -99,6 +98,8 @@ $primaryColor: #300a24;
     .fileBottom {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      height: 23px;
     }
   }
 }
