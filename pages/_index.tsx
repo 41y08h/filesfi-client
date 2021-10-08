@@ -6,18 +6,14 @@ import IdDisplay from "../components/IdDisplay";
 import FileInput from "../components/FileInput";
 import socket from "../RTCs/socket";
 import useEventSubscription from "../hooks/useEventSubscription";
-import useClientSideInit from "../hooks/useClientSideInit";
 import { toast } from "react-toastify";
 import readInChunks, { stopReadingInChunks } from "../utils/readInChunks";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import formatFileSize from "../utils/formatFileSize";
 import copy from "copy-to-clipboard";
-import Progress from "../components/Progress";
 import { v4 as uuid } from "uuid";
-import RTCDataTransport, {
-  RTCDataTransportInstance,
-} from "../utils/RTCDataTransport";
+import RTCDataTransport from "../utils/RTCDataTransport";
 import streamSaver from "streamsaver";
 
 type SignalingState = "idle" | "connecting" | "connected";
@@ -409,101 +405,109 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.content}>
-        {isSocketConnected ? (
-          <div>
-            <p className={styles.idHeading}>Your ID</p>
-            <div className={styles.idContainer}>
-              <IdDisplay id={id} />
-              <button className={styles.copyButton} onClick={handleIdCopy}>
-                📋
+      <Transition
+        appear
+        show={isSendingModalOpen}
+        as={Fragment}
+        afterLeave={handleSendingModalClose}
+        afterEnter={handleSendingModalOpen}
+      >
+        <Dialog as="div" className={styles.modal} onClose={handleDialogClose}>
+          <Transition.Child
+            as={Fragment}
+            enter={styles.enter}
+            enterFrom={styles.enterFrom}
+            enterTo={styles.enterTo}
+            leave={styles.leave}
+            leaveFrom={styles.leaveFrom}
+            leaveTo={styles.leaveTo}
+          >
+            <Dialog.Overlay as="div" className={styles.backdrop} />
+          </Transition.Child>
+          <Transition.Child
+            as="main"
+            enter={styles.enter}
+            enterFrom={styles.enterFrom}
+            enterTo={styles.enterTo}
+            leave={styles.leave}
+            leaveFrom={styles.leaveFrom}
+            leaveTo={styles.leaveTo}
+          >
+            <Dialog.Title>Send</Dialog.Title>
+            <div className={styles.fileInfo}>
+              <small className="line-clamp-2">File: {file?.name}</small>
+              <small>Size: {formatFileSize(file?.size)}</small>
+            </div>
+
+            <div className={styles.actionButtons}>
+              <button onClick={handleDialogClose}>Cancel</button>
+              <button
+                ref={sendButtonRef}
+                className={styles.sendButton}
+                onClick={handleSendFile}
+              >
+                Send
               </button>
             </div>
-          </div>
-        ) : (
-          "Connecting..."
-        )}
+          </Transition.Child>
+        </Dialog>
+      </Transition>
 
-        <Transition
-          appear
-          show={isSendingModalOpen}
-          as={Fragment}
-          afterLeave={handleSendingModalClose}
-          afterEnter={handleSendingModalOpen}
-        >
-          <Dialog as="div" className={styles.modal} onClose={handleDialogClose}>
-            <Transition.Child
-              as={Fragment}
-              enter={styles.enter}
-              enterFrom={styles.enterFrom}
-              enterTo={styles.enterTo}
-              leave={styles.leave}
-              leaveFrom={styles.leaveFrom}
-              leaveTo={styles.leaveTo}
-            >
-              <Dialog.Overlay as="div" className={styles.backdrop} />
-            </Transition.Child>
-            <Transition.Child
-              as="main"
-              enter={styles.enter}
-              enterFrom={styles.enterFrom}
-              enterTo={styles.enterTo}
-              leave={styles.leave}
-              leaveFrom={styles.leaveFrom}
-              leaveTo={styles.leaveTo}
-            >
-              <Dialog.Title>Send</Dialog.Title>
-              <div className={styles.fileInfo}>
-                <small className="line-clamp-2">File: {file?.name}</small>
-                <small>Size: {formatFileSize(file?.size)}</small>
+      <div className={styles.content}>
+        <div className={styles.top}>
+          <div className={styles.topContent}>
+            {isSocketConnected ? (
+              <div>
+                <p className={styles.idHeading}>Your ID</p>
+                <div className={styles.idContainer}>
+                  <IdDisplay id={id} />
+                  <button className={styles.copyButton} onClick={handleIdCopy}>
+                    📋
+                  </button>
+                </div>
               </div>
+            ) : (
+              "Connecting..."
+            )}
 
-              <div className={styles.actionButtons}>
-                <button onClick={handleDialogClose}>Cancel</button>
-                <button
-                  ref={sendButtonRef}
-                  className={styles.sendButton}
-                  onClick={handleSendFile}
+            {signalingState === "connected" && (
+              <div className={styles.actionInterface}>
+                <p>🔒 Connected to peer</p>
+                <FileInput
+                  droppable
+                  className={styles.fileInput}
+                  onChange={handleFileChange}
                 >
-                  Send
-                </button>
+                  {file ? file.name : "Select or drop files here"}
+                </FileInput>
               </div>
-            </Transition.Child>
-          </Dialog>
-        </Transition>
-
+            )}
+          </div>
+        </div>
         <div className={styles.innerContent}>
           {signalingState === "connected" && (
-            <div className={styles.mainInterface}>
-              <p>🔒 Connected to peer</p>
-              <FileInput
-                droppable
-                className={styles.fileInput}
-                onChange={handleFileChange}
-              >
-                {file ? file.name : "Select or drop files here"}
-              </FileInput>
-              <div>
-                {timelineFiles.map((file) => {
-                  const transportStatus =
-                    file.direction === "up" ? "Sent" : "Received";
+            <div className={styles.files}>
+              {timelineFiles.map((file) => {
+                const transportStatus =
+                  file.direction === "up" ? "Sent" : "Received";
 
-                  return (
-                    <div className={styles.file} key={file.id}>
-                      <p className={styles.filename}>{file.name}</p>
+                return (
+                  <div className={styles.file} key={file.id}>
+                    <p className={styles.filename}>{file.name}</p>
 
-                      <div className={styles.fileBottom}>
-                        <small>
-                          ({formatFileSize(file.size)}){" "}
-                          {file.isCancelled
-                            ? "Cancelled"
-                            : file.progress < 100
-                            ? `${Math.floor(file.progress)}% ${transportStatus}`
-                            : transportStatus}
-                        </small>
+                    <div className={styles.fileBottom}>
+                      <small>
+                        ({formatFileSize(file.size)}){" "}
+                        {file.isCancelled
+                          ? "Cancelled"
+                          : file.progress < 100
+                          ? `${Math.floor(file.progress)}% ${transportStatus}`
+                          : transportStatus}
+                      </small>
 
-                        <div>
-                          {!file.isCancelled && file.progress < 100 ? (
+                      <div>
+                        {!file.isCancelled &&
+                          (file.progress < 100 ? (
                             <button
                               onClick={() =>
                                 file.direction === "up"
@@ -519,13 +523,12 @@ export default function Home() {
                                 Save
                               </button>
                             )
-                          )}
-                        </div>
+                          ))}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

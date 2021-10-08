@@ -4,6 +4,6 @@ const Component = dynamic(() => import("./_index"), {
   ssr: false,
 });
 
-export default function Lib() {
-  return <Component />;
+export default function Lib(props) {
+  return <Component {...props} />;
 }

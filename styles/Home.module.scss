@@ -15,26 +15,52 @@ $primaryColor: #300a24;
     max-width: 768px;
     width: 100%;
     margin: auto;
+    display: flex;
+    flex-direction: column;
+
+    .top {
+      flex: 0 1 auto;
+
+      .topContent {
+        .idHeading {
+          font-size: 2rem;
+          font-weight: 700;
+          margin-bottom: 1rem;
+        }
+
+        .idContainer {
+          display: flex;
+          .copyButton {
+            color: white;
+            margin-left: 0.5rem;
+            font-size: 1.6rem;
+          }
+        }
+
+        .actionInterface {
+          margin-top: 0.8rem;
+
+          > p {
+            margin-bottom: 1rem;
+          }
+
+          .fileInput {
+            outline: none;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+          }
+        }
+      }
+    }
+
+    .innerContent {
+      margin-top: 0.8rem;
+      flex: 1 1 auto;
+    }
   }
-}
-
-.idHeading {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-}
-
-.idContainer {
-  display: flex;
-  .copyButton {
-    color: white;
-    margin-left: 0.5rem;
-    font-size: 1.6rem;
-  }
-}
-
-.innerContent {
-  margin-top: 0.8rem;
 }
 
 .connectForm {
@@ -63,19 +89,7 @@ $primaryColor: #300a24;
   }
 }
 
-.mainInterface {
-  > p {
-    margin-bottom: 1rem;
-  }
-
-  .fileInput {
-    outline: none;
-    height: 100px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-  }
+.files {
   .file {
     border: 1px solid white;
     padding: 4px 8px;
