@@ -1,5 +1,5 @@
 import io from "socket.io-client";
 
-const socket = io("http://192.168.0.105:5000");
+const socket = io(process.env.NEXT_PUBLIC_API_HOST);
 
 export default socket;
