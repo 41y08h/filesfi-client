@@ -15,6 +15,7 @@ import copy from "copy-to-clipboard";
 import { v4 as uuid } from "uuid";
 import RTCDataTransport from "../utils/RTCDataTransport";
 import streamSaver from "streamsaver";
+import Head from "next/head";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCTransportDataType =
@@ -401,6 +402,9 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
+      <Head>
+        <title>FilesFi</title>
+      </Head>
       <Transition
         appear
         show={isSendingModalOpen}
