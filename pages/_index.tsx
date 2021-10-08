@@ -238,8 +238,6 @@ export default function Home() {
   }
 
   function stopSendingFile(file?: TimelineFile) {
-    if (file.direction !== "up") return;
-
     rtcDataTransport.send({
       type: "fileTransport/sendingCancelled",
       payload: {
@@ -262,8 +260,6 @@ export default function Home() {
   }
 
   function stopReceivingFile(file?: TimelineFile) {
-    if (file.direction !== "down") return;
-
     rtcDataTransport.send<RTCTransportData>({
       type: "fileTransport/receivingCancelled",
       payload: {
@@ -282,7 +278,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!worker || !connection) return;
+    if (!connection) return;
 
     function handleWorkerMessage(event) {
       if (event.data.type === "saveFile/callback") {
@@ -494,7 +490,6 @@ export default function Home() {
                 return (
                   <div className={styles.file} key={file.id}>
                     <p className={styles.filename}>{file.name}</p>
-
                     <div className={styles.fileBottom}>
                       <small>
                         ({formatFileSize(file.size)}){" "}
@@ -504,7 +499,6 @@ export default function Home() {
                           ? `${Math.floor(file.progress)}% ${transportStatus}`
                           : transportStatus}
                       </small>
-
                       <div>
                         {!file.isCancelled &&
                           (file.progress < 100 ? (
