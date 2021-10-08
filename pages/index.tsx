@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 
-const Component = dynamic(() => import("./_index"), {
+const Component = dynamic(() => import("../modules/index"), {
   ssr: false,
 });
 

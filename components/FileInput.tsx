@@ -7,9 +7,9 @@ import {
 } from "react";
 
 interface Props
-  extends DetailedHTMLProps<
-    LabelHTMLAttributes<HTMLLabelElement>,
-    HTMLLabelElement
+  extends Omit<
+    DetailedHTMLProps<LabelHTMLAttributes<HTMLLabelElement>, HTMLLabelElement>,
+    "onChange"
   > {
   onChange: (files: FileList) => unknown;
   droppable?: boolean;

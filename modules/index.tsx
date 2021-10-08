@@ -14,7 +14,7 @@ import formatFileSize from "../utils/formatFileSize";
 import copy from "copy-to-clipboard";
 import { v4 as uuid } from "uuid";
 import RTCDataTransport from "../utils/RTCDataTransport";
-import streamSaver from "streamsaver";
+import * as streamSaver from "streamsaver";
 import Head from "next/head";
 
 type SignalingState = "idle" | "connecting" | "connected";
@@ -290,7 +290,7 @@ export default function Home() {
         if (!file) return;
 
         const stream = blob.stream();
-        const fileStream = streamSaver?.createWriteStream(file.name);
+        const fileStream = streamSaver.createWriteStream(file.name);
         stream.pipeTo(fileStream);
       }
     }

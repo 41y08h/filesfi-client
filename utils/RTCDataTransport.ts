@@ -12,11 +12,11 @@ export default function RTCDataTransport(
 ): RTCDataTransportInstance {
   let chunks = [];
 
-  function combineDataChunks<Data>(chunks: any[]) {
+  function combineDataChunks(chunks: any[]) {
     const schema = chunks[0];
     const values = chunks.slice(1);
 
-    const object: Data = JSON.parse(schema);
+    const object = JSON.parse(schema);
 
     let valueIndex = 0;
     readObjectValues(object, (pathname, value) => {
@@ -90,7 +90,7 @@ export default function RTCDataTransport(
     const isDone = chunk.toString() === "chunks:done";
 
     if (isDone) {
-      const data = combineDataChunks<Data>(chunks);
+      const data = combineDataChunks(chunks);
 
       chunks = []; // Reset
       onData(data);
