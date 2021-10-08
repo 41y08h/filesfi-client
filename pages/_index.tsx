@@ -490,32 +490,38 @@ export default function Home() {
 
                   return (
                     <div className={styles.file} key={file.id}>
-                      <p>
-                        {file.name} ({formatFileSize(file.size)}){" "}
-                        {!file.isCancelled &&
-                          (file.progress < 100
+                      <p className={styles.filename}>{file.name}</p>
+
+                      <div className={styles.fileBottom}>
+                        <small>
+                          ({formatFileSize(file.size)}){" "}
+                          {file.isCancelled
+                            ? "Cancelled"
+                            : file.progress < 100
                             ? `${Math.floor(file.progress)}% ${transportStatus}`
-                            : transportStatus)}
-                      </p>
-                      {file.isCancelled ? (
-                        <p>Cancelled</p>
-                      ) : file.progress < 100 ? (
-                        <button
-                          onClick={() =>
-                            file.direction === "up"
-                              ? stopSendingFile(file)
-                              : stopReceivingFile(file)
-                          }
-                        >
-                          Cancel
-                        </button>
-                      ) : (
-                        file.direction === "down" && (
-                          <button onClick={() => saveFile(file.id)}>
-                            Save
-                          </button>
-                        )
-                      )}
+                            : transportStatus}
+                        </small>
+
+                        <div>
+                          {!file.isCancelled && file.progress < 100 ? (
+                            <button
+                              onClick={() =>
+                                file.direction === "up"
+                                  ? stopSendingFile(file)
+                                  : stopReceivingFile(file)
+                              }
+                            >
+                              Cancel
+                            </button>
+                          ) : (
+                            file.direction === "down" && (
+                              <button onClick={() => saveFile(file.id)}>
+                                Save
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

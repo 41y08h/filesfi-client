@@ -12,7 +12,6 @@ $primaryColor: #300a24;
 
   background: $primaryColor;
   color: white;
-  height: 100vh;
   .content {
     max-width: 768px;
     width: 100%;
@@ -80,13 +79,26 @@ $primaryColor: #300a24;
   }
   .file {
     border: 1px solid white;
-    padding: 2px 4px;
+    padding: 4px 8px;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    margin-bottom: 0.6rem;
+    color: white;
 
-    > button {
+    button {
       color: white;
       font-size: 0.8rem;
+    }
+
+    .filename {
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .fileBottom {
+      display: flex;
+      justify-content: space-between;
     }
   }
 }
