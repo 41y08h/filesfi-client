@@ -14,7 +14,7 @@ import formatFileSize from "../utils/formatFileSize";
 import copy from "copy-to-clipboard";
 import { v4 as uuid } from "uuid";
 import RTCDataTransport from "../utils/RTCDataTransport";
-import * as streamSaver from "streamsaver";
+import streamSaver from "streamsaver";
 import Head from "next/head";
 
 type SignalingState = "idle" | "connecting" | "connected";
