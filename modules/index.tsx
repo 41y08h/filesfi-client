@@ -16,6 +16,10 @@ import { v4 as uuid } from "uuid";
 import RTCDataTransport from "../utils/RTCDataTransport";
 import streamSaver from "streamsaver";
 import Head from "next/head";
+import { ImFinder } from "react-icons/im";
+import { FaConnectdevelop } from "react-icons/fa";
+import { FaRegCopy } from "react-icons/fa6";
+import { FaGlobeAmericas } from "react-icons/fa";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCTransportDataType =
@@ -48,6 +52,7 @@ export default function Home() {
 
   // WebRTC Signaling
   const [signalingState, setSignalingState] = useState<SignalingState>("idle");
+  // const signalingState: SignalingState = "connecting";
   const peerIdInputRef = useRef<HTMLInputElement>();
   const callerRef = useRef<SimplePeerInstance>();
   const calleeRef = useRef<SimplePeerInstance>();
@@ -401,155 +406,172 @@ export default function Home() {
   }
 
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>FilesFi</title>
-      </Head>
-      <Transition
-        appear
-        show={isSendingModalOpen}
-        as={Fragment}
-        afterLeave={handleSendingModalClose}
-        afterEnter={handleSendingModalOpen}
-      >
-        <Dialog as="div" className={styles.modal} onClose={handleDialogClose}>
-          <Transition.Child
-            as={Fragment}
-            enter={styles.enter}
-            enterFrom={styles.enterFrom}
-            enterTo={styles.enterTo}
-            leave={styles.leave}
-            leaveFrom={styles.leaveFrom}
-            leaveTo={styles.leaveTo}
-          >
-            <Dialog.Overlay as="div" className={styles.backdrop} />
-          </Transition.Child>
-          <Transition.Child
-            as="main"
-            enter={styles.enter}
-            enterFrom={styles.enterFrom}
-            enterTo={styles.enterTo}
-            leave={styles.leave}
-            leaveFrom={styles.leaveFrom}
-            leaveTo={styles.leaveTo}
-          >
-            <Dialog.Title>Send</Dialog.Title>
-            <div className={styles.fileInfo}>
-              <small className="line-clamp-2">File: {file?.name}</small>
-              <small>Size: {formatFileSize(file?.size)}</small>
-            </div>
+    <div className="main bg-slate-50">
+      <div className="bg-gray-200 h-screen flex flex-col max-w-5xl mx-auto">
+        <div className="flex items-center justify-center p-2 py-5 font-light text-xl shadow-sm bg-gradient-to-t from-gray-300 to-gray-200">
+          <ImFinder className="text-blue-800 text-2xl" />
+          <span className="ml-2">FilesFi</span>
+        </div>
+        <Head>
+          <title>FilesFi - Share files with ease</title>
+        </Head>
+        <Transition
+          appear
+          show={isSendingModalOpen}
+          as={Fragment}
+          afterLeave={handleSendingModalClose}
+          afterEnter={handleSendingModalOpen}
+        >
+          <Dialog as="div" className={styles.modal} onClose={handleDialogClose}>
+            <Transition.Child
+              as={Fragment}
+              enter={styles.enter}
+              enterFrom={styles.enterFrom}
+              enterTo={styles.enterTo}
+              leave={styles.leave}
+              leaveFrom={styles.leaveFrom}
+              leaveTo={styles.leaveTo}
+            >
+              <Dialog.Overlay as="div" className={styles.backdrop} />
+            </Transition.Child>
+            <Transition.Child
+              as="main"
+              enter={styles.enter}
+              enterFrom={styles.enterFrom}
+              enterTo={styles.enterTo}
+              leave={styles.leave}
+              leaveFrom={styles.leaveFrom}
+              leaveTo={styles.leaveTo}
+            >
+              <Dialog.Title>Send</Dialog.Title>
+              <div className={styles.fileInfo}>
+                <small className="line-clamp-2">File: {file?.name}</small>
+                <small>Size: {formatFileSize(file?.size)}</small>
+              </div>
 
-            <div className={styles.actionButtons}>
-              <button onClick={handleDialogClose}>Cancel</button>
-              <button
-                ref={sendButtonRef}
-                className={styles.sendButton}
-                onClick={handleSendFile}
-              >
-                Send
-              </button>
-            </div>
-          </Transition.Child>
-        </Dialog>
-      </Transition>
+              <div className={styles.actionButtons}>
+                <button onClick={handleDialogClose}>Cancel</button>
+                <button
+                  ref={sendButtonRef}
+                  className={styles.sendButton}
+                  onClick={handleSendFile}
+                >
+                  Send
+                </button>
+              </div>
+            </Transition.Child>
+          </Dialog>
+        </Transition>
 
-      <div className={styles.content}>
-        <div className={styles.top}>
-          <div className={styles.topContent}>
-            {isSocketConnected ? (
-              <div>
-                <p className={styles.idHeading}>Your ID</p>
-                <div className={styles.idContainer}>
-                  <IdDisplay id={id} />
-                  <button className={styles.copyButton} onClick={handleIdCopy}>
-                    📋
+        {isSocketConnected ? (
+          <div className="flex-grow flex justify-center items-center">
+            <div>
+              <div className="flex flex-col items-center">
+                <FaGlobeAmericas className="text-7xl mb-6" />
+                <h1 className="text-2xl font-bold mb-1">Your ID</h1>
+                <div className="flex">
+                  <p className="text-2xl font-extralight mr-2">{id}</p>
+                  <button
+                    className="rounded-lg border border-gray-400 p-2"
+                    onClick={handleIdCopy}
+                  >
+                    <FaRegCopy />
                   </button>
                 </div>
               </div>
-            ) : (
-              "Connecting..."
-            )}
 
-            {signalingState === "connected" && (
-              <div className={styles.actionInterface}>
-                <p>🔒 Connected to peer</p>
-                <FileInput
-                  droppable
-                  className={styles.fileInput}
-                  onChange={handleFileChange}
-                >
-                  {file ? file.name : "Select or drop files here"}
-                </FileInput>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className={styles.innerContent}>
-          {signalingState === "connected" && (
-            <div className={styles.files}>
-              {timelineFiles.map((file) => {
-                const transportStatus =
-                  file.direction === "up" ? "Sent" : "Received";
+              {signalingState !== "connected" && (
+                <form className="flex flex-col mt-4" onSubmit={handleSubmit}>
+                  <input
+                    required
+                    min={100000}
+                    ref={peerIdInputRef}
+                    type="number"
+                    placeholder="Connect to ID"
+                    autoFocus
+                    className="rounded-lg p-2 outline-2 outline-blue-800 border border-gray-300"
+                  />
+                  <button
+                    className="bg-blue-800 text-white p-2 py-1 rounded-lg font-light mt-2"
+                    type="submit"
+                    disabled={signalingState === "connecting"}
+                  >
+                    {signalingState === "connecting"
+                      ? "Connecting..."
+                      : "Connect"}
+                  </button>
+                </form>
+              )}
 
-                return (
-                  <div className={styles.file} key={file.id}>
-                    <p className={styles.filename}>{file.name}</p>
-                    <div className={styles.fileBottom}>
-                      <small>
-                        ({formatFileSize(file.size)}){" "}
-                        {file.isCancelled
-                          ? "Cancelled"
-                          : file.progress < 100
-                          ? `${Math.floor(file.progress)}% ${transportStatus}`
-                          : transportStatus}
-                      </small>
-                      <div>
-                        {!file.isCancelled &&
-                          (file.progress < 100 ? (
-                            <button
-                              onClick={() =>
-                                file.direction === "up"
-                                  ? stopSendingFile(file)
-                                  : stopReceivingFile(file)
-                              }
-                            >
-                              Cancel
-                            </button>
-                          ) : (
-                            file.direction === "down" && (
-                              <button onClick={() => saveFile(file.id)}>
-                                Save
-                              </button>
-                            )
-                          ))}
+              {signalingState === "connected" && (
+                <div className={styles.actionInterface}>
+                  <p>🔒 Connected to peer</p>
+                  <FileInput
+                    droppable
+                    className={styles.fileInput}
+                    onChange={handleFileChange}
+                  >
+                    {file ? file.name : "Select or drop files here"}
+                  </FileInput>
+                </div>
+              )}
+
+              {signalingState === "connected" && (
+                <div className={styles.files}>
+                  {timelineFiles.map((file) => {
+                    const transportStatus =
+                      file.direction === "up" ? "Sent" : "Received";
+
+                    return (
+                      <div className={styles.file} key={file.id}>
+                        <p className={styles.filename}>{file.name}</p>
+                        <div className={styles.fileBottom}>
+                          <small>
+                            ({formatFileSize(file.size)}){" "}
+                            {file.isCancelled
+                              ? "Cancelled"
+                              : file.progress < 100
+                              ? `${Math.floor(
+                                  file.progress
+                                )}% ${transportStatus}`
+                              : transportStatus}
+                          </small>
+                          <div>
+                            {!file.isCancelled &&
+                              (file.progress < 100 ? (
+                                <button
+                                  onClick={() =>
+                                    file.direction === "up"
+                                      ? stopSendingFile(file)
+                                      : stopReceivingFile(file)
+                                  }
+                                >
+                                  Cancel
+                                </button>
+                              ) : (
+                                file.direction === "down" && (
+                                  <button onClick={() => saveFile(file.id)}>
+                                    Save
+                                  </button>
+                                )
+                              ))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-
-          {(signalingState === "idle" || signalingState === "connecting") &&
-            isSocketConnected && (
-              <form className={styles.connectForm} onSubmit={handleSubmit}>
-                <input
-                  required
-                  min={100000}
-                  ref={peerIdInputRef}
-                  type="number"
-                  placeholder="Connect to ID"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={signalingState === "connecting"}
-                >
-                  {signalingState === "idle" ? "Connect" : "Connecting..."}
-                </button>
-              </form>
-            )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex-grow flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center">
+              <FaConnectdevelop className="text-4xl mb-2" />
+              Connecting...
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
