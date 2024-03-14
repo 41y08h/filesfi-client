@@ -20,6 +20,13 @@ import { ImFinder } from "react-icons/im";
 import { FaConnectdevelop } from "react-icons/fa";
 import { FaRegCopy } from "react-icons/fa6";
 import { FaGlobeAmericas } from "react-icons/fa";
+import { TbCloudDataConnection } from "react-icons/tb";
+import { AiTwotoneLock } from "react-icons/ai";
+import { GoFile } from "react-icons/go";
+import { GoDownload } from "react-icons/go";
+import { MdOutlineCancel } from "react-icons/md";
+import { FaFolder } from "react-icons/fa";
+import { IoIosArrowDown } from "react-icons/io";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCTransportDataType =
@@ -406,8 +413,8 @@ export default function Home() {
   }
 
   return (
-    <div className="main bg-slate-50">
-      <div className="bg-gray-200 h-screen flex flex-col max-w-5xl mx-auto">
+    <div className="main bg-slate-400">
+      <div className="bg-gray-200 min-h-screen pb-8 flex flex-col max-w-5xl mx-auto">
         <div className="flex items-center justify-center p-2 py-5 font-light text-xl shadow-sm bg-gradient-to-t from-gray-300 to-gray-200">
           <ImFinder className="text-blue-800 text-2xl" />
           <span className="ml-2">FilesFi</span>
@@ -464,23 +471,22 @@ export default function Home() {
         </Transition>
 
         {isSocketConnected ? (
-          <div className="flex-grow flex justify-center items-center">
-            <div>
-              <div className="flex flex-col items-center">
-                <FaGlobeAmericas className="text-7xl mb-6" />
-                <h1 className="text-2xl font-bold mb-1">Your ID</h1>
-                <div className="flex">
-                  <p className="text-2xl font-extralight mr-2">{id}</p>
-                  <button
-                    className="rounded-lg border border-gray-400 p-2"
-                    onClick={handleIdCopy}
-                  >
-                    <FaRegCopy />
-                  </button>
+          <div className="flex-grow flex justify-center">
+            {signalingState !== "connected" && (
+              <div className="my-auto">
+                <div className="flex flex-col items-center">
+                  <FaGlobeAmericas className="text-7xl mb-6" />
+                  <h1 className="text-2xl font-bold mb-1">Your ID</h1>
+                  <div className="flex">
+                    <p className="text-2xl font-extralight mr-2">{id}</p>
+                    <button
+                      className="rounded-lg border border-gray-400 p-2"
+                      onClick={handleIdCopy}
+                    >
+                      <FaRegCopy />
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              {signalingState !== "connected" && (
                 <form className="flex flex-col mt-4" onSubmit={handleSubmit}>
                   <input
                     required
@@ -501,33 +507,63 @@ export default function Home() {
                       : "Connect"}
                   </button>
                 </form>
-              )}
-
-              {signalingState === "connected" && (
-                <div className={styles.actionInterface}>
-                  <p>🔒 Connected to peer</p>
-                  <FileInput
-                    droppable
-                    className={styles.fileInput}
-                    onChange={handleFileChange}
-                  >
-                    {file ? file.name : "Select or drop files here"}
-                  </FileInput>
+              </div>
+            )}
+            {signalingState === "connected" && (
+              <div className="flex flex-col items-center mt-16 flex-grow max-w-lg px-4">
+                <AiTwotoneLock className="text-6xl" />
+                <p className="font-light">Connected</p>
+                <div className="flex items-center text-2xl font-light mt-4">
+                  <p className="flex flex-col border border-gray-400 rounded-md p-2 pr-4 py-1 border-r-0">
+                    <span className="text-xs">Your ID</span>
+                    <span>{id}</span>
+                  </p>
+                  <TbCloudDataConnection className="text-3xl" />
+                  <p className="flex flex-col items-end border border-gray-400 rounded-md p-2 pr-4 py-1 border-l-0">
+                    <span className="text-xs">Peer ID</span>
+                    <span>{id}</span>
+                  </p>
                 </div>
-              )}
-
-              {signalingState === "connected" && (
-                <div className={styles.files}>
+                <FileInput
+                  droppable
+                  onChange={handleFileChange}
+                  className="mt-8 h-16 w-full text-center border border-gray-400 flex items-center justify-center rounded-lg"
+                >
+                  {file ? file.name : "Select or drop files here"}
+                </FileInput>
+                <div className=" w-full mt-4 flex items-center justify-between bg-gray-300 p-2 px-4 rounded">
+                  <div className="flex items-center mr-4">
+                    <FaFolder className="mr-2 text-gray-600 text-xl" />
+                    <span>Files </span>
+                  </div>
+                  <IoIosArrowDown className="ml-4 text-xl" />
+                </div>
+                <div className="w-full flex flex-col mt-4">
                   {timelineFiles.map((file) => {
                     const transportStatus =
                       file.direction === "up" ? "Sent" : "Received";
-
                     return (
-                      <div className={styles.file} key={file.id}>
-                        <p className={styles.filename}>{file.name}</p>
-                        <div className={styles.fileBottom}>
+                      <div
+                        className="w-full border shadow rounded-lg bg-slate-100 mb-2.5"
+                        key={file.id}
+                      >
+                        <div className="flex justify-between items-center p-2 px-3 border-b border-gray-200 pb-2">
+                          <span>
+                            <GoFile />
+                          </span>
+                          <p
+                            title={file.name}
+                            className="text-sm ml-2 overflow-hidden text-ellipsis"
+                          >
+                            {file.name}
+                          </p>
+                          <small className="ml-2 flex-shrink-0">
+                            {formatFileSize(file.size)}
+                          </small>
+                        </div>
+
+                        <div className="p-2 px-3 flex justify-between bg-gray-200">
                           <small>
-                            ({formatFileSize(file.size)}){" "}
                             {file.isCancelled
                               ? "Cancelled"
                               : file.progress < 100
@@ -546,12 +582,12 @@ export default function Home() {
                                       : stopReceivingFile(file)
                                   }
                                 >
-                                  Cancel
+                                  <MdOutlineCancel />
                                 </button>
                               ) : (
                                 file.direction === "down" && (
                                   <button onClick={() => saveFile(file.id)}>
-                                    Save
+                                    <GoDownload />
                                   </button>
                                 )
                               ))}
@@ -561,8 +597,8 @@ export default function Home() {
                     );
                   })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex-grow flex items-center justify-center">
