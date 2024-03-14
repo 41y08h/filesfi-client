@@ -1,8 +1,6 @@
 import Peer, { Instance as SimplePeerInstance } from "simple-peer";
 import { useState, useEffect, FormEventHandler, useRef, useMemo } from "react";
 import { ICallInitData, ICallData } from "../interfaces/call";
-import styles from "../styles/Home.module.scss";
-import IdDisplay from "../components/IdDisplay";
 import FileInput from "../components/FileInput";
 import socket from "../RTCs/socket";
 import useEventSubscription from "../hooks/useEventSubscription";
@@ -22,11 +20,12 @@ import { FaRegCopy } from "react-icons/fa6";
 import { FaGlobeAmericas } from "react-icons/fa";
 import { TbCloudDataConnection } from "react-icons/tb";
 import { AiTwotoneLock } from "react-icons/ai";
-import { GoFile } from "react-icons/go";
 import { GoDownload } from "react-icons/go";
 import { MdOutlineCancel } from "react-icons/md";
 import { FaFolder } from "react-icons/fa";
 import { IoIosArrowDown } from "react-icons/io";
+import { GrSend } from "react-icons/gr";
+import { FaFile } from "react-icons/fa6";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCTransportDataType =
@@ -429,38 +428,67 @@ export default function Home() {
           afterLeave={handleSendingModalClose}
           afterEnter={handleSendingModalOpen}
         >
-          <Dialog as="div" className={styles.modal} onClose={handleDialogClose}>
+          <Dialog
+            as="div"
+            className="fixed z-10 top-0 left-0 flex justify-center items-center h-screen w-screen"
+            onClose={handleDialogClose}
+          >
             <Transition.Child
               as={Fragment}
-              enter={styles.enter}
-              enterFrom={styles.enterFrom}
-              enterTo={styles.enterTo}
-              leave={styles.leave}
-              leaveFrom={styles.leaveFrom}
-              leaveTo={styles.leaveTo}
+              enter=" ease-in duration-200 transition-opacity"
+              enterFrom="opacity-0"
+              enterTo="opacity-40"
+              leave=" ease-out duration-200 transition-opacity"
+              leaveFrom="opacity-40"
+              leaveTo="opacity-0"
             >
-              <Dialog.Overlay as="div" className={styles.backdrop} />
+              <Dialog.Overlay
+                as="div"
+                className="fixed top-0 left-0 w-full h-full bg-black opacity-80"
+              />
             </Transition.Child>
             <Transition.Child
               as="main"
-              enter={styles.enter}
-              enterFrom={styles.enterFrom}
-              enterTo={styles.enterTo}
-              leave={styles.leave}
-              leaveFrom={styles.leaveFrom}
-              leaveTo={styles.leaveTo}
+              className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg"
+              enter="transition-all duration-200 ease-in"
+              enterFrom="opacity-0 scale-0"
+              enterTo="opacity-100 scale-100"
+              leave="transition-all duration-200 ease-out"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-0"
             >
-              <Dialog.Title>Send</Dialog.Title>
-              <div className={styles.fileInfo}>
-                <small className="line-clamp-2">File: {file?.name}</small>
-                <small>Size: {formatFileSize(file?.size)}</small>
+              <Dialog.Title className="flex items-center">
+                <GrSend className="mr-2 text-xl" />
+                <span className="font-bold">Send</span>
+              </Dialog.Title>
+              <div className="mt-4">
+                <div className="flex items-center">
+                  <span className="mr-2">
+                    <FaFile />
+                  </span>
+                  <span
+                    title={file?.name}
+                    className="overflow-hidden whitespace-nowrap text-ellipsis text-sm"
+                  >
+                    {file?.name}
+                  </span>
+                </div>
+                <p className="text-sm mt-1">
+                  Size: {formatFileSize(file?.size)}
+                </p>
               </div>
 
-              <div className={styles.actionButtons}>
-                <button onClick={handleDialogClose}>Cancel</button>
+              <div className="flex items-center justify-between mt-4">
+                <button
+                  className="bg-white w-full p-2 rounded-lg text-sm border border-gray-400"
+                  onClick={handleDialogClose}
+                >
+                  Cancel
+                </button>
+                <div className="w-5"></div>
                 <button
                   ref={sendButtonRef}
-                  className={styles.sendButton}
+                  className="w-full p-2 bg-blue-800 text-white rounded-lg text-sm"
                   onClick={handleSendFile}
                 >
                   Send
@@ -549,11 +577,11 @@ export default function Home() {
                       >
                         <div className="flex justify-between items-center p-2 px-3 border-b border-gray-200 pb-2">
                           <span>
-                            <GoFile />
+                            <FaFile />
                           </span>
                           <p
                             title={file.name}
-                            className="text-sm ml-2 overflow-hidden text-ellipsis"
+                            className="text-sm ml-2 overflow-hidden text-ellipsis whitespace-nowrap"
                           >
                             {file.name}
                           </p>
