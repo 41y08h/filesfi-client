@@ -555,9 +555,11 @@ export default function Home() {
                 <FileInput
                   droppable
                   onChange={handleFileChange}
-                  className="mt-8 h-16 w-full text-center border border-gray-400 flex items-center justify-center rounded-lg"
+                  className="mt-8 w-full text-center border border-gray-400 py-5 px-4 rounded-lg flex"
                 >
-                  {file ? file.name : "Select or drop files here"}
+                  <span className="overflow-hidden whitespace-nowrap text-ellipsis w-full">
+                    {file ? file.name : "Select or drop files here"}
+                  </span>
                 </FileInput>
                 <div className=" w-full mt-4 flex items-center justify-between bg-gray-300 p-2 px-4 rounded">
                   <div className="flex items-center mr-4">
