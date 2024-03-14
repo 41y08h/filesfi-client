@@ -413,6 +413,9 @@ export default function Home() {
 
   return (
     <div className="">
+      <Head>
+        <title>FilesFi - Share files with ease</title>
+      </Head>
       <Transition
         appear
         show={isSendingModalOpen}
