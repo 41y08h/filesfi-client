@@ -20,12 +20,13 @@ import { FaRegCopy } from "react-icons/fa6";
 import { FaGlobeAmericas } from "react-icons/fa";
 import { TbCloudDataConnection } from "react-icons/tb";
 import { AiTwotoneLock } from "react-icons/ai";
-import { GoDownload } from "react-icons/go";
+import { GoDownload, GoFile } from "react-icons/go";
 import { MdOutlineCancel } from "react-icons/md";
 import { FaFolder } from "react-icons/fa";
 import { IoIosArrowDown } from "react-icons/io";
 import { GrSend } from "react-icons/gr";
 import { FaFile } from "react-icons/fa6";
+import { MdConnectWithoutContact } from "react-icons/md";
 
 type SignalingState = "idle" | "connecting" | "connected";
 type RTCTransportDataType =
@@ -411,226 +412,223 @@ export default function Home() {
     setIsSendingModalOpen(false);
   }
 
-  return (
-    <div className="">
-      <Head>
-        <title>FilesFi - Share files with ease</title>
-      </Head>
-      <Transition
-        appear
-        show={isSendingModalOpen}
-        as={Fragment}
-        afterLeave={handleSendingModalClose}
-        afterEnter={handleSendingModalOpen}
-      >
-        <Dialog
-          as="div"
-          className="fixed z-10 top-0 left-0 flex justify-center items-center h-screen w-screen"
-          onClose={handleDialogClose}
-        >
-          <Transition.Child
-            as={Fragment}
-            enter=" ease-in duration-200 transition-opacity"
-            enterFrom="opacity-0"
-            enterTo="opacity-40"
-            leave=" ease-out duration-200 transition-opacity"
-            leaveFrom="opacity-40"
-            leaveTo="opacity-0"
-          >
-            <Dialog.Overlay
-              as="div"
-              className="fixed top-0 left-0 w-full h-full bg-black opacity-80"
-            />
-          </Transition.Child>
-          <Transition.Child
-            as="main"
-            className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg"
-            enter="transition-all duration-200 ease-in"
-            enterFrom="opacity-0 scale-0"
-            enterTo="opacity-100 scale-100"
-            leave="transition-all duration-200 ease-out"
-            leaveFrom="opacity-100 scale-100"
-            leaveTo="opacity-0 scale-0"
-          >
-            <Dialog.Title className="flex items-center">
-              <GrSend className="mr-2 text-xl" />
-              <span className="font-bold">Send</span>
-            </Dialog.Title>
-            <div className="mt-4">
-              <div className="flex items-center">
-                <span className="mr-2">
-                  <FaFile />
-                </span>
-                <span
-                  title={file?.name}
-                  className="overflow-hidden whitespace-nowrap text-ellipsis text-sm"
-                >
-                  {file?.name}
-                </span>
-              </div>
-              <p className="text-sm mt-1">Size: {formatFileSize(file?.size)}</p>
-            </div>
-
-            <div className="flex items-center justify-between mt-4">
-              <button
-                className="bg-white w-full p-2 rounded-lg text-sm border border-gray-400"
-                onClick={handleDialogClose}
-              >
-                Cancel
-              </button>
-              <div className="w-5"></div>
-              <button
-                ref={sendButtonRef}
-                className="w-full p-2 bg-blue-800 text-white rounded-lg text-sm"
-                onClick={handleSendFile}
-              >
-                Send
-              </button>
-            </div>
-          </Transition.Child>
-        </Dialog>
-      </Transition>
-
-      {isSocketConnected ? (
-        <div className="flex-grow flex justify-center sm:justify-start">
-          {signalingState !== "connected" && (
-            <div className="my-auto mx-auto">
-              <div className="flex flex-col items-center sm:flex-row sm:justify-center">
-                <FaGlobeAmericas className="text-7xl sm:text-9xl mb-6 sm:mb-0 sm:mr-6" />
-                <div className="flex flex-col items-center sm:items-start">
-                  <h1 className="text-2xl font-bold mb-1">Your ID</h1>
-                  <div className="flex">
-                    <p className="text-2xl font-extralight mr-2">{id}</p>
-                    <button
-                      className="rounded-lg border border-gray-400 p-2"
-                      onClick={handleIdCopy}
-                    >
-                      <FaRegCopy />
-                    </button>
-                  </div>
-                  <form className="flex flex-col mt-4" onSubmit={handleSubmit}>
-                    <input
-                      required
-                      min={100000}
-                      ref={peerIdInputRef}
-                      type="number"
-                      placeholder="Connect to ID"
-                      autoFocus
-                      className="rounded-lg p-2 outline-2 outline-blue-800 border border-gray-300"
-                    />
-                    <button
-                      className="bg-blue-800 text-white p-2 py-1 rounded-lg font-light mt-2"
-                      type="submit"
-                      disabled={signalingState === "connecting"}
-                    >
-                      {signalingState === "connecting"
-                        ? "Connecting..."
-                        : "Connect"}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
-          {signalingState === "connected" && (
-            <div className="flex flex-col items-center mt-16 flex-grow max-w-lg px-4">
-              <AiTwotoneLock className="text-6xl" />
-              <p className="font-light">Connected</p>
-              <div className="flex items-center text-2xl font-light mt-4">
-                <p className="flex flex-col border border-gray-400 rounded-md p-2 pr-4 py-1 border-r-0">
-                  <span className="text-xs">Your ID</span>
-                  <span>{id}</span>
-                </p>
-                <TbCloudDataConnection className="text-3xl" />
-                <p className="flex flex-col items-end border border-gray-400 rounded-md p-2 pr-4 py-1 border-l-0">
-                  <span className="text-xs">Peer ID</span>
-                  <span>{id}</span>
-                </p>
-              </div>
-              <FileInput
-                droppable
-                onChange={handleFileChange}
-                className="mt-8 w-full text-center border border-gray-400 py-5 px-4 rounded-lg flex"
-              >
-                <span className="overflow-hidden whitespace-nowrap text-ellipsis w-full">
-                  {file ? file.name : "Select or drop files here"}
-                </span>
-              </FileInput>
-              <div className=" w-full mt-4 flex items-center justify-between bg-gray-300 p-2 px-4 rounded">
-                <div className="flex items-center mr-4">
-                  <FaFolder className="mr-2 text-gray-600 text-xl" />
-                  <span>Files </span>
-                </div>
-                <IoIosArrowDown className="ml-4 text-xl" />
-              </div>
-              <div className="w-full flex flex-col mt-4">
-                {timelineFiles.map((file) => {
-                  const transportStatus =
-                    file.direction === "up" ? "Sent" : "Received";
-                  return (
-                    <div
-                      className="w-full border shadow rounded-lg bg-slate-100 mb-2.5"
-                      key={file.id}
-                    >
-                      <div className="flex justify-between items-center p-2 px-3 border-b border-gray-200 pb-2">
-                        <span>
-                          <FaFile />
-                        </span>
-                        <p
-                          title={file.name}
-                          className="text-sm ml-2 overflow-hidden text-ellipsis whitespace-nowrap"
-                        >
-                          {file.name}
-                        </p>
-                        <small className="ml-2 flex-shrink-0">
-                          {formatFileSize(file.size)}
-                        </small>
-                      </div>
-
-                      <div className="p-2 px-3 flex justify-between bg-gray-200">
-                        <small>
-                          {file.isCancelled
-                            ? "Cancelled"
-                            : file.progress < 100
-                            ? `${Math.floor(file.progress)}% ${transportStatus}`
-                            : transportStatus}
-                        </small>
-                        <div>
-                          {!file.isCancelled &&
-                            (file.progress < 100 ? (
-                              <button
-                                onClick={() =>
-                                  file.direction === "up"
-                                    ? stopSendingFile(file)
-                                    : stopReceivingFile(file)
-                                }
-                              >
-                                <MdOutlineCancel />
-                              </button>
-                            ) : (
-                              file.direction === "down" && (
-                                <button onClick={() => saveFile(file.id)}>
-                                  <GoDownload />
-                                </button>
-                              )
-                            ))}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+  if (!isSocketConnected)
+    return (
+      <div className="flex-1 flex justify-center items-center">
+        <div className="flex flex-col items-center justify-center">
+          <FaConnectdevelop className="text-4xl mb-2" />
+          Connecting...
         </div>
-      ) : (
-        <div className="flex-grow flex items-center justify-center">
-          <div className="flex flex-col items-center justify-center">
-            <FaConnectdevelop className="text-4xl mb-2" />
-            Connecting...
+      </div>
+    );
+
+  if (signalingState !== "connected")
+    return (
+      <div className="p-8 flex-1 flex justify-center items-center">
+        <div className="flex flex-col items-center md:flex-row md:justify-center">
+          <FaGlobeAmericas className="text-7xl md:text-9xl mb-6 md:mb-0 md:mr-6" />
+          <div className="flex flex-col items-center md:items-start">
+            <h1 className="text-2xl font-bold mb-1">Your ID</h1>
+            <div className="flex">
+              <p className="text-2xl font-extralight mr-2">{id}</p>
+              <button
+                className="rounded-lg border border-gray-400 p-2"
+                onClick={handleIdCopy}
+              >
+                <FaRegCopy />
+              </button>
+            </div>
+            <form className="flex flex-col mt-4" onSubmit={handleSubmit}>
+              <input
+                required
+                min={100000}
+                ref={peerIdInputRef}
+                type="number"
+                placeholder="Connect to ID"
+                autoFocus
+                className="rounded-lg p-2 outline-2 outline-blue-800 border border-gray-300"
+              />
+              <button
+                className="bg-blue-800 text-white p-2 py-1 rounded-lg font-light mt-2"
+                type="submit"
+                disabled={signalingState === "connecting"}
+              >
+                {signalingState === "connecting" ? "Connecting..." : "Connect"}
+              </button>
+            </form>
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+
+  if (signalingState === "connected")
+    return (
+      <div className="px-3 py-5 md:py-14 md:px-36">
+        <Transition
+          appear
+          show={isSendingModalOpen}
+          as={Fragment}
+          afterLeave={handleSendingModalClose}
+          afterEnter={handleSendingModalOpen}
+        >
+          <Dialog
+            as="div"
+            className="fixed z-10 top-0 left-0 p-4 flex justify-center items-center h-screen w-screen"
+            onClose={handleDialogClose}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter=" ease-in duration-200 transition-opacity"
+              enterFrom="opacity-0"
+              enterTo="opacity-40"
+              leave=" ease-out duration-200 transition-opacity"
+              leaveFrom="opacity-40"
+              leaveTo="opacity-0"
+            >
+              <Dialog.Overlay
+                as="div"
+                className="fixed top-0 left-0 w-full h-full bg-black opacity-80"
+              />
+            </Transition.Child>
+            <Transition.Child
+              as="main"
+              className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg overflow-hidden"
+              enter="transition-all duration-200 ease-in"
+              enterFrom="opacity-0 scale-0"
+              enterTo="opacity-100 scale-100"
+              leave="transition-all duration-200 ease-out"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-0"
+            >
+              <Dialog.Title className="flex items-center">
+                <GrSend className="mr-2 text-xl" />
+                <span className="font-bold">Send</span>
+              </Dialog.Title>
+              <div className="mt-4">
+                <div className="flex items-center">
+                  <span className="mr-2">
+                    <FaFile />
+                  </span>
+                  <span
+                    title={file?.name}
+                    className="overflow-hidden whitespace-nowrap text-ellipsis text-sm"
+                  >
+                    {file?.name}
+                  </span>
+                </div>
+                <p className="text-sm mt-1">
+                  Size: {formatFileSize(file?.size)}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between mt-4">
+                <button
+                  className="bg-white w-full p-2 rounded-lg text-sm border border-gray-400"
+                  onClick={handleDialogClose}
+                >
+                  Cancel
+                </button>
+                <div className="w-5"></div>
+                <button
+                  ref={sendButtonRef}
+                  className="w-full p-2 bg-blue-800 text-white rounded-lg text-sm"
+                  onClick={handleSendFile}
+                >
+                  Send
+                </button>
+              </div>
+            </Transition.Child>
+          </Dialog>
+        </Transition>
+        <div className="flex flex-col w-full md:flex-row">
+          <div className="flex flex-col items-center md:items-start">
+            <div className="md:flex items-center hidden">
+              <MdConnectWithoutContact className="text-3xl mr-2" />
+              <p className="font-light">Connected</p>
+            </div>
+            <div className="flex items-center text-2xl font-light md:mt-4">
+              <p className="bg-gray-300 text- flex flex-col rounded-md p-3 pr-6 py-2 md:mr-3">
+                <span className="text-xs">Your ID</span>
+                <span>{id}</span>
+              </p>
+              <MdConnectWithoutContact className="text-3xl mx-4 md:hidden" />
+              <p className="bg-gray-300 flex flex-col items-end rounded-md p-3 pl-6 py-2">
+                <span className="text-xs">Peer ID</span>
+                <span>{id}</span>
+              </p>
+            </div>
+          </div>
+          <FileInput
+            droppable
+            onChange={handleFileChange}
+            className="bg-gray-100 border-gray-300 flex-1 overflow-hidden border py-8 px-4 rounded-lg flex justify-center items-center mt-4 md:mt-0 md:ml-8"
+          >
+            <span>
+              <FaFile className="mr-2" />
+            </span>
+            <p className="overflow-hidden whitespace-nowrap text-ellipsis">
+              {file ? file.name : "Select or drop files here"}
+            </p>
+          </FileInput>
+        </div>
+
+        <div className="w-full flex flex-col mt-4">
+          {timelineFiles.map((file) => {
+            const transportStatus =
+              file.direction === "up" ? "Sent" : "Received";
+            return (
+              <div
+                className="w-full border shadow rounded-lg bg-slate-100 mb-2.5"
+                key={file.id}
+              >
+                <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                  <span>
+                    <FaFile />
+                  </span>
+                  <p
+                    title={file.name}
+                    className="text-sm ml-2 overflow-hidden text-ellipsis whitespace-nowrap w-full"
+                  >
+                    {file.name}
+                  </p>
+                  <small className="ml-2 flex-shrink-0">
+                    {formatFileSize(file.size)}
+                  </small>
+                </div>
+
+                <div className="p-2 px-3 flex justify-between bg-gray-200">
+                  <small>
+                    {file.isCancelled
+                      ? "Cancelled"
+                      : file.progress < 100
+                      ? `${Math.floor(file.progress)}% ${transportStatus}`
+                      : transportStatus}
+                  </small>
+                  <div>
+                    {!file.isCancelled &&
+                      (file.progress < 100 ? (
+                        <button
+                          onClick={() =>
+                            file.direction === "up"
+                              ? stopSendingFile(file)
+                              : stopReceivingFile(file)
+                          }
+                        >
+                          <MdOutlineCancel />
+                        </button>
+                      ) : (
+                        file.direction === "down" && (
+                          <button onClick={() => saveFile(file.id)}>
+                            <GoDownload />
+                          </button>
+                        )
+                      ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
 }

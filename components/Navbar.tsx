@@ -3,18 +3,18 @@ import { ImFinder } from "react-icons/im";
 
 export default function Navbar() {
   return (
-    <div className="flex items-center justify-between px-8 py-5 font-light shadow-sm bg-gradient-to-t from-gray-300 to-gray-200">
-      <Link href="/">
-        <a className="flex items-center">
-          <ImFinder className="text-blue-800 text-2xl" />
-          <span className="ml-2 text-xl">FilesFi</span>
-        </a>
-      </Link>
-      <nav>
+    <nav className="px-5 md:px-8 py-5 font-light bg-gray-300">
+      <ul className="flex items-center justify-between">
+        <Link href="/">
+          <a className="flex items-center">
+            <ImFinder className="text-blue-800 text-lg" />
+            <span className="ml-2 text-lg">FilesFi</span>
+          </a>
+        </Link>
         <Link href="/about">
           <a>About</a>
         </Link>
-      </nav>
-    </div>
+      </ul>
+    </nav>
   );
 }

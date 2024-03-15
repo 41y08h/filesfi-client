@@ -2,7 +2,7 @@ import Head from "next/head";
 
 export default function About() {
   return (
-    <div className="p-8">
+    <div className="p-8 pb-16">
       <Head>
         <title>About the project - FilesFi</title>
       </Head>
