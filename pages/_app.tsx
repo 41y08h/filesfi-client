@@ -1,6 +1,7 @@
 import { ToastContainer } from "react-toastify";
 import "../styles/globals.css";
 import "react-toastify/dist/ReactToastify.css";
+import "react-tabs/style/react-tabs.css";
 import Layout from "../components/Layout";
 
 function MyApp({ Component, pageProps }) {

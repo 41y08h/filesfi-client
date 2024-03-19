@@ -6,29 +6,25 @@ import socket from "../RTCs/socket";
 import useEventSubscription from "../hooks/useEventSubscription";
 import { toast } from "react-toastify";
 import readInChunks, { stopReadingInChunks } from "../utils/readInChunks";
-import { Dialog, Transition } from "@headlessui/react";
+import { Dialog, Tab, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import formatFileSize from "../utils/formatFileSize";
-import copy from "copy-to-clipboard";
 import { v4 as uuid } from "uuid";
 import RTCDataTransport from "../utils/RTCDataTransport";
 import streamSaver from "streamsaver";
-import Head from "next/head";
-import { ImFinder } from "react-icons/im";
-import { FaConnectdevelop } from "react-icons/fa";
-import { FaRegCopy } from "react-icons/fa6";
-import { FaGlobeAmericas } from "react-icons/fa";
-import { TbCloudDataConnection } from "react-icons/tb";
-import { AiTwotoneLock } from "react-icons/ai";
-import { GoDownload, GoFile } from "react-icons/go";
-import { MdOutlineCancel } from "react-icons/md";
-import { FaFolder } from "react-icons/fa";
-import { IoIosArrowDown } from "react-icons/io";
 import { GrSend } from "react-icons/gr";
 import { FaFile } from "react-icons/fa6";
-import { MdConnectWithoutContact } from "react-icons/md";
+import { MdConnectWithoutContact, MdOutlineCancel } from "react-icons/md";
+import ConnectingScreen from "../components/ConnectingScreen";
+import ConnectScreen from "../components/ConnectScreen";
+import TimelineFilesListItem from "../components/TimelineFilesListItem";
+import TimelineFilesTab from "../components/TimelineFilesTab";
+import { FaAngleRight, FaCross, FaFolder } from "react-icons/fa";
+import CancelledTimelineFileListItem from "../components/CancelledTimelineFileListItem";
+import { GoFile } from "react-icons/go";
+import { IoIosReturnRight } from "react-icons/io";
+import { CiFileOff } from "react-icons/ci";
 
-type SignalingState = "idle" | "connecting" | "connected";
 type RTCTransportDataType =
   | "fileTransport/fileInfo"
   | "fileTransport/sendingCancelled"
@@ -42,7 +38,7 @@ type FileInfo = {
   chunk?: Uint8Array;
 };
 
-interface TimelineFile {
+export interface TimelineFile {
   id: string;
   name: string;
   size: number;
@@ -134,7 +130,6 @@ export default function Home() {
     event.preventDefault();
 
     callerRef.current = new Peer({ initiator: true, trickle: false });
-
     setSignalingState("connecting");
   };
 
@@ -392,11 +387,6 @@ export default function Home() {
     };
   }, [worker, connection, timelineFiles, rtcDataTransport]);
 
-  function handleIdCopy() {
-    copy(id.toString());
-    toast.success("Copied", { pauseOnFocusLoss: false });
-  }
-
   // Sending Modal
 
   function handleSendingModalOpen() {
@@ -412,53 +402,16 @@ export default function Home() {
     setIsSendingModalOpen(false);
   }
 
-  if (!isSocketConnected)
-    return (
-      <div className="flex-1 flex justify-center items-center">
-        <div className="flex flex-col items-center justify-center">
-          <FaConnectdevelop className="text-4xl mb-2" />
-          Connecting...
-        </div>
-      </div>
-    );
+  if (!isSocketConnected) return <ConnectingScreen />;
 
   if (signalingState !== "connected")
     return (
-      <div className="p-8 flex-1 flex justify-center items-center">
-        <div className="flex flex-col items-center md:flex-row md:justify-center">
-          <FaGlobeAmericas className="text-7xl md:text-9xl mb-6 md:mb-0 md:mr-6" />
-          <div className="flex flex-col items-center md:items-start">
-            <h1 className="text-2xl font-bold mb-1">Your ID</h1>
-            <div className="flex">
-              <p className="text-2xl font-extralight mr-2">{id}</p>
-              <button
-                className="rounded-lg border border-gray-400 p-2"
-                onClick={handleIdCopy}
-              >
-                <FaRegCopy />
-              </button>
-            </div>
-            <form className="flex flex-col mt-4" onSubmit={handleSubmit}>
-              <input
-                required
-                min={100000}
-                ref={peerIdInputRef}
-                type="number"
-                placeholder="Connect to ID"
-                autoFocus
-                className="rounded-lg p-2 outline-2 outline-blue-800 border border-gray-300"
-              />
-              <button
-                className="bg-blue-800 text-white p-2 py-1 rounded-lg font-light mt-2"
-                type="submit"
-                disabled={signalingState === "connecting"}
-              >
-                {signalingState === "connecting" ? "Connecting..." : "Connect"}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
+      <ConnectScreen
+        onSubmit={handleSubmit}
+        id={id}
+        inputRef={peerIdInputRef}
+        signalingState={signalingState}
+      />
     );
 
   if (signalingState === "connected")
@@ -492,7 +445,7 @@ export default function Home() {
             </Transition.Child>
             <Transition.Child
               as="main"
-              className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg overflow-hidden"
+              className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg min-w-96 overflow-hidden"
               enter="transition-all duration-200 ease-in"
               enterFrom="opacity-0 scale-0"
               enterTo="opacity-100 scale-100"
@@ -572,62 +525,26 @@ export default function Home() {
           </FileInput>
         </div>
 
-        <div className="w-full flex flex-col mt-4">
-          {timelineFiles.map((file) => {
-            const transportStatus =
-              file.direction === "up" ? "Sent" : "Received";
-            return (
-              <div
-                className="w-full border shadow rounded-lg bg-slate-100 mb-2.5"
-                key={file.id}
-              >
-                <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                  <span>
-                    <FaFile />
-                  </span>
-                  <p
-                    title={file.name}
-                    className="text-sm ml-2 overflow-hidden text-ellipsis whitespace-nowrap w-full"
-                  >
-                    {file.name}
-                  </p>
-                  <small className="ml-2 flex-shrink-0">
-                    {formatFileSize(file.size)}
-                  </small>
-                </div>
-
-                <div className="p-2 px-3 flex justify-between bg-gray-200">
-                  <small>
-                    {file.isCancelled
-                      ? "Cancelled"
-                      : file.progress < 100
-                      ? `${Math.floor(file.progress)}% ${transportStatus}`
-                      : transportStatus}
-                  </small>
-                  <div>
-                    {!file.isCancelled &&
-                      (file.progress < 100 ? (
-                        <button
-                          onClick={() =>
-                            file.direction === "up"
-                              ? stopSendingFile(file)
-                              : stopReceivingFile(file)
-                          }
-                        >
-                          <MdOutlineCancel />
-                        </button>
-                      ) : (
-                        file.direction === "down" && (
-                          <button onClick={() => saveFile(file.id)}>
-                            <GoDownload />
-                          </button>
-                        )
-                      ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="mt-3 md:mt-5">
+          <div className="mb-2 font-light flex justify-center items-end">
+            <div className="flex items-center w-full px-4 py-2 text-lg rounded-t-lg bg-gray-300 justify-center md:justify-start">
+              <FaFolder className="mr-1.5 text-blue-800" /> <span>Files</span>
+            </div>
+          </div>
+          {timelineFiles.length === 0 && (
+            <div className="flex flex-col items-center justify-center mt-20">
+              <CiFileOff className="text-3xl" />
+              <span className="mt-2 text-sm">Empty</span>
+            </div>
+          )}
+          {timelineFiles.map((file) => (
+            <TimelineFilesListItem
+              file={file}
+              onSave={saveFile}
+              onStopReceiving={stopReceivingFile}
+              onStopSending={stopSendingFile}
+            />
+          ))}
         </div>
       </div>
     );
