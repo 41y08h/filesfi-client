@@ -18,11 +18,7 @@ import { MdConnectWithoutContact, MdOutlineCancel } from "react-icons/md";
 import ConnectingScreen from "../components/ConnectingScreen";
 import ConnectScreen from "../components/ConnectScreen";
 import TimelineFilesListItem from "../components/TimelineFilesListItem";
-import TimelineFilesTab from "../components/TimelineFilesTab";
-import { FaAngleRight, FaCross, FaFolder } from "react-icons/fa";
-import CancelledTimelineFileListItem from "../components/CancelledTimelineFileListItem";
-import { GoFile } from "react-icons/go";
-import { IoIosReturnRight } from "react-icons/io";
+import { FaFolder } from "react-icons/fa";
 import { CiFileOff } from "react-icons/ci";
 
 type RTCTransportDataType =
@@ -445,7 +441,7 @@ export default function Home() {
             </Transition.Child>
             <Transition.Child
               as="main"
-              className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg min-w-96 overflow-hidden"
+              className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg min-w-64 overflow-hidden"
               enter="transition-all duration-200 ease-in"
               enterFrom="opacity-0 scale-0"
               enterTo="opacity-100 scale-100"
@@ -500,12 +496,12 @@ export default function Home() {
               <p className="font-light">Connected</p>
             </div>
             <div className="flex items-center text-2xl font-light md:mt-4">
-              <p className="bg-gray-300 text- flex flex-col rounded-md p-3 pr-6 py-2 md:mr-3">
+              <p className="bg-gray-900 text-white text- flex flex-col rounded-md p-3 pr-6 py-2 md:mr-3">
                 <span className="text-xs">Your ID</span>
                 <span>{id}</span>
               </p>
               <MdConnectWithoutContact className="text-3xl mx-4 md:hidden" />
-              <p className="bg-gray-300 flex flex-col items-end rounded-md p-3 pl-6 py-2">
+              <p className="bg-gray-900 text-white flex flex-col items-end rounded-md p-3 pl-6 py-2">
                 <span className="text-xs">Peer ID</span>
                 <span>{id}</span>
               </p>
@@ -513,8 +509,13 @@ export default function Home() {
           </div>
           <FileInput
             droppable
+            style={{
+              backgroundImage:
+                "url(https://pics.craiyon.com/2023-10-27/26ac573724d9479b8b1d6a8d4424f23a.webp)",
+              backgroundPosition: "center bottom",
+            }}
             onChange={handleFileChange}
-            className="bg-gray-100 border-gray-300 flex-1 overflow-hidden border py-8 px-4 rounded-lg flex justify-center items-center mt-4 md:mt-0 md:ml-8"
+            className=" border-gray-300 text-white flex-1 overflow-hidden border py-8 px-4 rounded-lg flex justify-center items-center mt-4 md:mt-0 md:ml-4"
           >
             <span>
               <FaFile className="mr-2" />
