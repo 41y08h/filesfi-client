@@ -1,17 +1,8 @@
-import Peer, { Instance as SimplePeerInstance } from "simple-peer";
-import { useState, useEffect, FormEventHandler, useRef, useMemo } from "react";
-import { ICallInitData, ICallData } from "../interfaces/call";
+import { useState, useRef, useMemo } from "react";
 import FileInput from "../components/FileInput";
-import socket from "../RTCs/socket";
-import useEventSubscription from "../hooks/useEventSubscription";
-import { toast } from "react-toastify";
-import readInChunks, { stopReadingInChunks } from "../utils/readInChunks";
 import { Dialog, Tab, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import formatFileSize from "../utils/formatFileSize";
-import { v4 as uuid } from "uuid";
-import RTCDataTransport from "../utils/RTCDataTransport";
-import streamSaver from "streamsaver";
 import { GrSend } from "react-icons/gr";
 import { FaFile } from "react-icons/fa6";
 import { MdConnectWithoutContact, MdOutlineCancel } from "react-icons/md";
@@ -20,19 +11,8 @@ import ConnectScreen from "../components/ConnectScreen";
 import TimelineFilesListItem from "../components/TimelineFilesListItem";
 import { FaFolder } from "react-icons/fa";
 import { CiFileOff } from "react-icons/ci";
-
-type RTCTransportDataType =
-  | "fileTransport/fileInfo"
-  | "fileTransport/sendingCancelled"
-  | "fileTransport/receivingCancelled";
-type RTCTransportData<T = any> = { type: RTCTransportDataType; payload?: T };
-type FileInfo = {
-  id: string;
-  name: string;
-  size: number;
-  progress: number;
-  chunk?: Uint8Array;
-};
+import { useWebSocket } from "./WebSocketProvider";
+import { useWebRTC } from "./WebRTCProvider";
 
 export interface TimelineFile {
   id: string;
@@ -45,146 +25,19 @@ export interface TimelineFile {
 }
 
 export default function Home() {
-  // WebSocket
-  const [id, setId] = useState<number>();
-  const [isSocketConnected, setIsSocketConnected] = useState(false);
-
-  // WebRTC Signaling
-  const [signalingState, setSignalingState] = useState<SignalingState>("idle");
-  // const signalingState: SignalingState = "connecting";
-  const peerIdInputRef = useRef<HTMLInputElement>();
-  const callerRef = useRef<SimplePeerInstance>();
-  const calleeRef = useRef<SimplePeerInstance>();
-  const [incomingCall, setIncomingCall] = useState<ICallData>();
-
-  // Connected UI
-  const [connection, setConnection] = useState<SimplePeerInstance>();
-
-  const [file, setFile] = useState<File>();
-  const [isSendingModalOpen, setIsSendingModalOpen] = useState(false);
+  const { id, isSocketConnected } = useWebSocket();
+  const {
+    timelineFiles,
+    signalingState,
+    saveFile,
+    stopReceivingFile,
+    stopSendingFile,
+    sendFile,
+  } = useWebRTC();
 
   const sendButtonRef = useRef<HTMLButtonElement>();
-
-  const worker = useMemo(() => new Worker("/worker.js"), []);
-
-  const rtcDataTransport = useMemo(
-    () =>
-      connection
-        ? RTCDataTransport((chunk) => connection.write(chunk))
-        : undefined,
-    [connection]
-  );
-  const [timelineFiles, setTimelineFiles] = useState<TimelineFile[]>([]);
-
-  // WebSocket connectivity
-  useEventSubscription("connect", () => {
-    socket.emit("join");
-  });
-
-  useEventSubscription("join/callback", (id: number) => {
-    setId(id);
-    setIsSocketConnected(true);
-  });
-
-  useEventSubscription("disconnect", () => {
-    setIsSocketConnected(false);
-  });
-
-  useEventSubscription("exception/callPeer", (error) => {
-    if (error.type === "deviceBusy") {
-      toast.error("Requested device is busy");
-    } else if (error.type === "callingSelf") {
-      toast.error("Calling self is not allowed");
-    } else if (error.type === "deviceNotFound") {
-      toast.error("Device not found");
-    }
-
-    callerRef.current.destroy();
-    callerRef.current = undefined;
-    setSignalingState("idle");
-  });
-
-  useEventSubscription("peerIsCalling", async (call: ICallData) => {
-    if (["connected", "connecting"].includes(signalingState)) {
-      return socket.emit("exception/peerIsCalling", {
-        type: "busy",
-        payload: { callerId: call.callerId },
-      });
-    }
-    calleeRef.current = new Peer({ trickle: false });
-    calleeRef.current.signal(call.signal);
-
-    setIncomingCall(call);
-  });
-
-  useEventSubscription("callAnswered", (signal) => {
-    const caller = callerRef.current;
-    if (caller) caller.signal(signal);
-  });
-
-  const handleSubmit: FormEventHandler = async (event) => {
-    event.preventDefault();
-
-    callerRef.current = new Peer({ initiator: true, trickle: false });
-    setSignalingState("connecting");
-  };
-
-  // Caller and callee event handler attachments
-  function getCallConnectedHandler(peer: SimplePeerInstance) {
-    setConnection(peer);
-
-    return () => {
-      setSignalingState("connected");
-    };
-  }
-
-  useEffect(() => {
-    const caller = callerRef.current;
-    if (!caller) return;
-
-    // Handler call connection
-    const handleCallConnected = getCallConnectedHandler(caller);
-    caller.on("connect", handleCallConnected);
-
-    // Handler signaling
-    function handleSignal(signal) {
-      // Send caller's signal to the peer
-      const peerId = parseInt(peerIdInputRef.current.value);
-      const callPayload: ICallInitData = { peerId, signal };
-
-      socket.emit("callPeer", callPayload);
-    }
-    caller.on("signal", handleSignal);
-
-    return () => {
-      caller.off("connect", handleCallConnected);
-      caller.off("signal", handleSignal);
-    };
-  }, [callerRef.current]);
-
-  useEffect(() => {
-    const callee = calleeRef.current;
-    if (!callee) return;
-
-    const call = incomingCall;
-
-    const handleCallConnected = getCallConnectedHandler(callee);
-    callee.on("connect", handleCallConnected);
-
-    function handleSignal(signal) {
-      const callerId = call.callerId;
-      const answerCallPayload: ICallData = { callerId, signal };
-
-      socket.emit("answerCall", answerCallPayload);
-    }
-
-    callee.on("signal", handleSignal);
-
-    return () => {
-      callee.off("connect", handleCallConnected);
-      callee.off("signal", handleSignal);
-    };
-  }, [calleeRef.current]);
+  const [file, setFile] = useState<File>();
+  const [isSendingModalOpen, setIsSendingModalOpen] = useState(false);
 
   const handleFileChange = (files: FileList) => {
     const file = files[0];
@@ -193,198 +46,11 @@ export default function Home() {
   };
 
   async function handleSendFile() {
-    const fileId = uuid();
-    const fileInfo: RTCTransportData<FileInfo> = {
-      type: "fileTransport/fileInfo",
-      payload: {
-        id: fileId,
-        name: file.name,
-        size: file.size,
-        progress: 0,
-      },
-    };
-    rtcDataTransport.send(fileInfo);
-
-    // Transport file in chunks
-    // Chunking id is used to stop the process
-    const chunkingId = readInChunks(file, {
-      onRead(chunk, { progress }) {
-        // Update progress state
-        setTimelineFiles((timelineFiles) =>
-          timelineFiles.map((file) =>
-            file.id === fileId ? { ...file, progress } : file
-          )
-        );
-
-        rtcDataTransport.send<RTCTransportData<FileInfo>>({
-          type: "fileTransport/fileInfo",
-          payload: {
-            id: fileId,
-            name: file.name,
-            size: file.size,
-            progress,
-            chunk: new Uint8Array(chunk),
-          },
-        });
-      },
-    });
-
-    // Update timeline
-    setTimelineFiles((old) => [
-      ...old,
-      { ...fileInfo.payload, direction: "up", chunkingId, isCancelled: false },
-    ]);
+    sendFile(file);
     setIsSendingModalOpen(false);
   }
 
-  function saveFile(fileId: string) {
-    worker.postMessage({ type: "saveFile", payload: { fileId } });
-  }
-
-  function stopSendingFile(file?: TimelineFile) {
-    rtcDataTransport.send({
-      type: "fileTransport/sendingCancelled",
-      payload: {
-        fileId: file.id,
-      },
-    });
-
-    // Stop chunking
-    stopReadingInChunks(file.chunkingId);
-    console.log(file.id);
-
-    // Update timeline
-    setTimelineFiles((timelineFiles) =>
-      timelineFiles.map((timelineFile) =>
-        timelineFile.id === file.id
-          ? { ...timelineFile, isCancelled: true }
-          : timelineFile
-      )
-    );
-  }
-
-  function stopReceivingFile(file?: TimelineFile) {
-    rtcDataTransport.send<RTCTransportData>({
-      type: "fileTransport/receivingCancelled",
-      payload: {
-        fileId: file.id,
-      },
-    });
-
-    // Update timeline
-    setTimelineFiles((timelineFiles) =>
-      timelineFiles.map((timelineFile) =>
-        timelineFile.id === file.id
-          ? { ...timelineFile, isCancelled: true }
-          : timelineFile
-      )
-    );
-  }
-
-  useEffect(() => {
-    if (!connection) return;
-
-    function handleWorkerMessage(event) {
-      if (event.data.type === "saveFile/callback") {
-        const { fileId, blob } = event.data.payload;
-        const file = timelineFiles.find((file) => file.id === fileId);
-
-        console.log("file", file);
-        if (!file) return;
-
-        const stream = blob.stream();
-        const fileStream = streamSaver.createWriteStream(file.name);
-        stream.pipeTo(fileStream);
-      }
-    }
-
-    function handleData(chunk) {
-      rtcDataTransport.handleData<RTCTransportData>(chunk, (data) => {
-        console.log(data.type);
-
-        if (data.type === "fileTransport/fileInfo") {
-          const file: TimelineFile = {
-            id: data.payload.id,
-            name: data.payload.name,
-            size: data.payload.size,
-            progress: data.payload.progress,
-            direction: "down",
-            isCancelled: false,
-          };
-
-          // Update timeline files
-          const isNew = file.progress === 0;
-          if (isNew) {
-            setTimelineFiles((old) => [...old, file]);
-          } else {
-            setTimelineFiles((old) =>
-              old.map((timelineFile) =>
-                timelineFile.id === file.id
-                  ? { ...file, isCancelled: timelineFile.isCancelled }
-                  : timelineFile
-              )
-            );
-
-            // Send chunks to worker
-            worker.postMessage({
-              type: "fileChunk",
-              payload: {
-                fileId: data.payload.id,
-                chunk: data.payload.chunk,
-              },
-            });
-          }
-        } else if (data.type === "fileTransport/sendingCancelled") {
-          const { fileId } = data.payload;
-          setTimelineFiles((timelineFiles) =>
-            timelineFiles.map((timelineFile) =>
-              timelineFile.id === fileId
-                ? { ...timelineFile, isCancelled: true }
-                : timelineFile
-            )
-          );
-        } else if (data.type === "fileTransport/receivingCancelled") {
-          const { fileId } = data.payload;
-
-          stopSendingFile(
-            timelineFiles.find((timelineFile) => timelineFile.id === fileId)
-          );
-        }
-      });
-    }
-
-    function handleClose() {
-      connection.destroy();
-      setConnection(undefined);
-
-      if (signalingState === "connected")
-        toast.error("Connection has been closed");
-
-      setSignalingState("idle");
-    }
-
-    function handleError(error) {
-      if (error.code === "ERR_DATA_CHANNEL") {
-        handleClose();
-      }
-    }
-
-    connection.on("data", handleData);
-    connection.on("error", handleError);
-    connection.on("close", handleClose);
-    worker.addEventListener("message", handleWorkerMessage);
-
-    return () => {
-      connection.off("data", handleData);
-      connection.off("error", handleError);
-      connection.off("close", handleClose);
-
-      worker.removeEventListener("message", handleWorkerMessage);
-    };
-  }, [worker, connection, timelineFiles, rtcDataTransport]);
-
   // Sending Modal
-
   function handleSendingModalOpen() {
     const sendButton = sendButtonRef.current;
     sendButton.focus();
@@ -399,20 +65,10 @@ export default function Home() {
   }
 
   if (!isSocketConnected) return <ConnectingScreen />;
-
-  if (signalingState !== "connected")
-    return (
-      <ConnectScreen
-        onSubmit={handleSubmit}
-        id={id}
-        inputRef={peerIdInputRef}
-        signalingState={signalingState}
-      />
-    );
-
+  if (signalingState !== "connected") return <ConnectScreen />;
   if (signalingState === "connected")
     return (
-      <div className="px-3 py-5 md:py-14 md:px-36">
+      <div className="px-3 py-5 md:py-14 md:px-36 flex-grow flex flex-col">
         <Transition
           appear
           show={isSendingModalOpen}
@@ -441,7 +97,7 @@ export default function Home() {
             </Transition.Child>
             <Transition.Child
               as="main"
-              className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg min-w-64 overflow-hidden"
+              className="bg-gray-200 z-20 p-5 rounded-lg max-w-lg w-full overflow-hidden"
               enter="transition-all duration-200 ease-in"
               enterFrom="opacity-0 scale-0"
               enterTo="opacity-100 scale-100"
@@ -525,11 +181,10 @@ export default function Home() {
             </p>
           </FileInput>
         </div>
-
-        <div className="mt-3 md:mt-5">
-          <div className="mb-2 font-light flex justify-center items-end">
+        <div className="mt-3 md:mt-5 bg-gray-100 border border-gray-400 rounded-lg flex-1">
+          <div className="mb-2 font-light flex justify-center items-end border-b border-gray-300">
             <div className="flex items-center w-full px-4 py-2 text-lg rounded-t-lg bg-gray-300 justify-center md:justify-start">
-              <FaFolder className="mr-1.5 text-blue-800" /> <span>Files</span>
+              <FaFolder className="mr-2 text-blue-800" /> <span>Files</span>
             </div>
           </div>
           {timelineFiles.length === 0 && (
@@ -538,14 +193,17 @@ export default function Home() {
               <span className="mt-2 text-sm">Empty</span>
             </div>
           )}
-          {timelineFiles.map((file) => (
-            <TimelineFilesListItem
-              file={file}
-              onSave={saveFile}
-              onStopReceiving={stopReceivingFile}
-              onStopSending={stopSendingFile}
-            />
-          ))}
+          <div className="px-2">
+            {timelineFiles.map((file) => (
+              <TimelineFilesListItem
+                key={file.id}
+                file={file}
+                onSave={saveFile}
+                onStopReceiving={stopReceivingFile}
+                onStopSending={stopSendingFile}
+              />
+            ))}
+          </div>
         </div>
       </div>
     );

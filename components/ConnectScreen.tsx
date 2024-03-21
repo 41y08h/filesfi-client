@@ -1,25 +1,24 @@
 import copy from "copy-to-clipboard";
-import { FC, FormEventHandler, Ref } from "react";
+import { FC, FormEventHandler, Ref, useRef } from "react";
 import { FaGlobeAmericas, FaRegCopy } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { useWebRTC } from "../modules/WebRTCProvider";
+import { useWebSocket } from "../modules/WebSocketProvider";
 
-interface Props {
-  id: number;
-  onSubmit: FormEventHandler;
-  inputRef: Ref<HTMLInputElement>;
-  signalingState: SignalingState;
-}
+const ConnectScreen: FC = () => {
+  const { id } = useWebSocket();
+  const { signalingState, call } = useWebRTC();
+  const peerIdInputRef = useRef<HTMLInputElement>();
 
-const ConnectScreen: FC<Props> = ({
-  id,
-  onSubmit,
-  inputRef,
-  signalingState,
-}) => {
   function handleIdCopy() {
     copy(id.toString());
     toast.success("Copied", { pauseOnFocusLoss: false });
   }
+
+  const handleSubmit: FormEventHandler = async (event) => {
+    event.preventDefault();
+    call(parseInt(peerIdInputRef.current.value));
+  };
 
   return (
     <div className="p-8 flex-1 flex justify-center items-center">
@@ -36,11 +35,11 @@ const ConnectScreen: FC<Props> = ({
               <FaRegCopy />
             </button>
           </div>
-          <form className="flex flex-col mt-4" onSubmit={onSubmit}>
+          <form className="flex flex-col mt-4" onSubmit={handleSubmit}>
             <input
               required
               min={100000}
-              ref={inputRef}
+              ref={peerIdInputRef}
               type="number"
               placeholder="Connect to ID"
               autoFocus

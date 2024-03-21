@@ -6,8 +6,5 @@
 
 html {
   font-family: "Inter", sans-serif;
-}
-
-.main {
-  background-image: url("https://www.transparenttextures.com/patterns/black-thread.png");
+  background-color: rgb(198, 198, 198);
 }
