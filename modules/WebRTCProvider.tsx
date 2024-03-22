@@ -20,12 +20,12 @@ import { v4 as uuid } from "uuid";
 import RTCDataTransport from "../utils/RTCDataTransport";
 
 type RTCTransportDataType =
-  | "fileTransport/fileInfo"
+  | "fileTransport/fileData"
   | "fileTransport/sendingCancelled"
   | "fileTransport/receivingCancelled";
 
 type RTCTransportData<T = any> = { type: RTCTransportDataType; payload?: T };
-type FileInfo = {
+type FileData = {
   id: string;
   name: string;
   size: number;
@@ -41,6 +41,7 @@ interface WebRTCContext {
   saveFile: (fileId: string) => any;
   stopSendingFile: (file?: TimelineFile) => any;
   stopReceivingFile: (file?: TimelineFile) => any;
+  peerID: number | null;
 }
 
 const WebRTCContext = createContext(undefined);
@@ -59,11 +60,18 @@ export const WebRTCProvider: FC = ({ children }) => {
 
   const [timelineFiles, setTimelineFiles] = useState<TimelineFile[]>([]);
 
-  const workerRef = useRef<Worker>();
+  const [worker, setWorker] = useState<Worker>();
 
   useEffect(() => {
-    workerRef.current = new Worker("/worker.js");
+    setWorker(new Worker("/worker.js"));
 
+    return () => {
+      if (worker) worker.terminate();
+      setWorker(null);
+    };
+  }, []);
+
+  useEffect(() => {
     async function handleWorkerMessage(event) {
       if (event.data.type === "saveFile/callback") {
         const { fileId, blob } = event.data.payload;
@@ -77,12 +85,11 @@ export const WebRTCProvider: FC = ({ children }) => {
       }
     }
 
-    workerRef.current.addEventListener("message", handleWorkerMessage);
-
+    if (worker) worker.addEventListener("message", handleWorkerMessage);
     return () => {
-      workerRef.current?.terminate();
+      if (worker) worker.removeEventListener("message", handleWorkerMessage);
     };
-  }, [timelineFiles]);
+  }, [worker, timelineFiles]);
 
   const rtcDataTransport = useMemo(
     () =>
@@ -139,15 +146,6 @@ export const WebRTCProvider: FC = ({ children }) => {
     };
   }
 
-  // Handler signaling
-  function handleSignal(signal) {
-    // Send caller's signal to the peer
-    const peerId = parseInt(peerID.toString());
-    const callPayload: ICallInitData = { peerId, signal };
-
-    socket.emit("callPeer", callPayload);
-  }
-
   useEffect(() => {
     const caller = callerRef.current;
     if (!caller) return;
@@ -155,6 +153,14 @@ export const WebRTCProvider: FC = ({ children }) => {
     // Handler call connection
     const handleCallConnected = getCallConnectedHandler(caller);
     caller.on("connect", handleCallConnected);
+
+    function handleSignal(signal) {
+      // Send caller's signal to the peer
+      const peerId = peerID;
+      const callPayload: ICallInitData = { peerId, signal };
+
+      socket.emit("callPeer", callPayload);
+    }
 
     caller.on("signal", handleSignal);
 
@@ -175,6 +181,7 @@ export const WebRTCProvider: FC = ({ children }) => {
 
     function handleSignal(signal) {
       const callerId = call.callerId;
+      setPeerID(callerId);
       const answerCallPayload: ICallData = { callerId, signal };
 
       socket.emit("answerCall", answerCallPayload);
@@ -190,8 +197,8 @@ export const WebRTCProvider: FC = ({ children }) => {
 
   function sendFile(file: File) {
     const fileId = uuid();
-    const fileInfo: RTCTransportData<FileInfo> = {
-      type: "fileTransport/fileInfo",
+    const fileInfo: RTCTransportData<FileData> = {
+      type: "fileTransport/fileData",
       payload: {
         id: fileId,
         name: file.name,
@@ -212,8 +219,8 @@ export const WebRTCProvider: FC = ({ children }) => {
           )
         );
 
-        rtcDataTransport.send<RTCTransportData<FileInfo>>({
-          type: "fileTransport/fileInfo",
+        rtcDataTransport.send<RTCTransportData<FileData>>({
+          type: "fileTransport/fileData",
           payload: {
             id: fileId,
             name: file.name,
@@ -233,7 +240,7 @@ export const WebRTCProvider: FC = ({ children }) => {
   }
 
   function saveFile(fileId: string) {
-    workerRef.current.postMessage({ type: "saveFile", payload: { fileId } });
+    worker.postMessage({ type: "saveFile", payload: { fileId } });
   }
 
   function stopSendingFile(file?: TimelineFile) {
@@ -280,7 +287,7 @@ export const WebRTCProvider: FC = ({ children }) => {
 
     function handleData(chunk) {
       rtcDataTransport.handleData<RTCTransportData>(chunk, (data) => {
-        if (data.type === "fileTransport/fileInfo") {
+        if (data.type === "fileTransport/fileData") {
           const file: TimelineFile = {
             id: data.payload.id,
             name: data.payload.name,
@@ -304,7 +311,7 @@ export const WebRTCProvider: FC = ({ children }) => {
             );
 
             // Send chunks to worker
-            workerRef.current.postMessage({
+            worker.postMessage({
               type: "fileChunk",
               payload: {
                 fileId: data.payload.id,
@@ -356,7 +363,7 @@ export const WebRTCProvider: FC = ({ children }) => {
       connection.off("error", handleError);
       connection.off("close", handleClose);
     };
-  }, [workerRef.current, connection, timelineFiles, rtcDataTransport]);
+  }, [worker, connection, timelineFiles, rtcDataTransport]);
 
   const value: WebRTCContext = {
     signalingState,
@@ -366,6 +373,7 @@ export const WebRTCProvider: FC = ({ children }) => {
     stopSendingFile,
     stopReceivingFile,
     sendFile,
+    peerID,
   };
 
   return (

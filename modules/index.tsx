@@ -33,6 +33,7 @@ export default function Home() {
     stopReceivingFile,
     stopSendingFile,
     sendFile,
+    peerID,
   } = useWebRTC();
 
   const sendButtonRef = useRef<HTMLButtonElement>();
@@ -159,7 +160,7 @@ export default function Home() {
               <MdConnectWithoutContact className="text-3xl mx-4 md:hidden" />
               <p className="bg-gray-900 text-white flex flex-col items-end rounded-md p-3 pl-6 py-2">
                 <span className="text-xs">Peer ID</span>
-                <span>{id}</span>
+                <span>{peerID}</span>
               </p>
             </div>
           </div>

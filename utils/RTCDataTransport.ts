@@ -56,6 +56,7 @@ export default function RTCDataTransport(
       const supportedTypeMatched = Constructors.some((Constructor) => {
         if (value instanceof Constructor) {
           values.push(value);
+          // Replace with '$' where any one of `Constructors is present
           objectPath.set(schema, pathname, "$");
 
           // done
