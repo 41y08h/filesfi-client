@@ -3,9 +3,9 @@ import blobToArrayBuffer from "./blobToArrayBuffer";
 
 type ReadInChunksFn = (
   file: File,
-  options?: {
+  options: {
     chunkSize?: number;
-    onRead?: (chunk: ArrayBuffer, status: { progress: number }) => unknown;
+    onRead: (chunk: ArrayBuffer, status: { progress: number }) => unknown;
   }
 ) => string;
 
@@ -13,7 +13,7 @@ let runningProcesses: string[] = [];
 
 const readInChunks: ReadInChunksFn = (
   file,
-  { chunkSize = 64 * 1000, onRead } = {}
+  { chunkSize = 64 * 1000, onRead }
 ) => {
   const processId = uuid();
 
@@ -21,19 +21,18 @@ const readInChunks: ReadInChunksFn = (
   readChunk();
 
   async function readChunk(startPosition = 0) {
-    let isRunning = runningProcesses.includes(processId);
-
     const endPosition = startPosition + chunkSize;
     const blob = file.slice(startPosition, endPosition, file.type);
     const chunk = await blobToArrayBuffer(blob);
-    isRunning = runningProcesses.includes(processId);
+
+    const isRunning = runningProcesses.includes(processId);
     if (!isRunning) return;
 
-    const isDone = endPosition > file.size;
+    const isDone = endPosition >= file.size;
     const progress = isDone ? 100 : (endPosition / file.size) * 100;
 
-    if (onRead) onRead(chunk, { progress });
-    if (endPosition < file.size) readChunk(endPosition);
+    onRead(chunk, { progress });
+    if (!isDone) readChunk(endPosition);
   }
 
   return processId;
