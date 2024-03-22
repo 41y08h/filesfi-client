@@ -166,9 +166,9 @@ export default function Home() {
           <FileInput
             droppable
             style={{
-              backgroundImage:
-                "url(https://pics.craiyon.com/2023-10-27/26ac573724d9479b8b1d6a8d4424f23a.webp)",
+              backgroundImage: "url(/trees.webp)",
               backgroundPosition: "center bottom",
+              backgroundColor: "#cecdcd",
             }}
             onChange={handleFileChange}
             className=" border-gray-300 text-white flex-1 overflow-hidden border py-8 px-4 rounded-lg flex justify-center items-center mt-4 md:mt-0 md:ml-4"
@@ -181,10 +181,10 @@ export default function Home() {
             </p>
           </FileInput>
         </div>
-        <div className="mt-3 md:mt-5 bg-gray-100 border border-gray-400 rounded-lg flex-1">
+        <div className="mt-3 md:mt-5 bg-gray-100 border border-gray-300 rounded-lg flex-1">
           <div className="mb-2 font-light flex justify-center items-end border-b border-gray-300">
-            <div className="flex items-center w-full px-4 py-2 text-lg rounded-t-lg bg-gray-300 justify-center md:justify-start">
-              <FaFolder className="mr-2 text-blue-800" /> <span>Files</span>
+            <div className="flex items-center w-full px-4 py-2 text-lg rounded-t-lg bg-gray-800 text-white justify-center md:justify-start">
+              <FaFolder className="mr-2 text-white" /> <span>Files</span>
             </div>
           </div>
           {timelineFiles.length === 0 && (
