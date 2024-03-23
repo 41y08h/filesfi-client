@@ -1,8 +1,6 @@
 import React, {
   createContext,
   FC,
-  FormEventHandler,
-  Ref,
   useContext,
   useEffect,
   useMemo,
@@ -33,48 +31,49 @@ type FileData = {
   chunk?: Uint8Array;
 };
 
-interface WebRTCContext {
+interface WebRTCContextValue {
   signalingState: SignalingState;
   timelineFiles: TimelineFile[];
   call: (peerID: number) => any;
   sendFile: (file: File) => any;
   saveFile: (fileId: string) => any;
-  stopSendingFile: (file?: TimelineFile) => any;
-  stopReceivingFile: (file?: TimelineFile) => any;
-  peerID: number | null;
+  stopSendingFile: (file: TimelineFile) => any;
+  stopReceivingFile: (file: TimelineFile) => any;
+  peerID?: number;
 }
 
-const WebRTCContext = createContext(undefined);
+const WebRTCContext = createContext<WebRTCContextValue | undefined>(undefined);
 
-export function useWebRTC(): WebRTCContext {
-  return useContext(WebRTCContext);
+export function useWebRTC(): WebRTCContextValue {
+  const ctx = useContext(WebRTCContext);
+  if (!ctx) throw new Error("Expected the WebRTCContext to be initialized");
+  return ctx;
 }
 
 export const WebRTCProvider: FC = ({ children }) => {
-  const [peerID, setPeerID] = useState<number>(null);
   const [signalingState, setSignalingState] = useState<SignalingState>("idle");
   const callerRef = useRef<SimplePeerInstance>();
   const calleeRef = useRef<SimplePeerInstance>();
+  const [peerID, setPeerID] = useState<number>();
   const [incomingCall, setIncomingCall] = useState<ICallData>();
   const [connection, setConnection] = useState<SimplePeerInstance>();
-
   const [timelineFiles, setTimelineFiles] = useState<TimelineFile[]>([]);
-
   const [worker, setWorker] = useState<Worker>();
 
   useEffect(() => {
     setWorker(new Worker("/worker.js"));
 
     return () => {
-      if (worker) worker.terminate();
-      setWorker(null);
+      worker?.terminate();
     };
   }, []);
 
   useEffect(() => {
-    async function handleWorkerMessage(event) {
-      if (event.data.type === "saveFile/callback") {
-        const { fileId, blob } = event.data.payload;
+    async function handleWorkerMessage({
+      data: { type, payload },
+    }: WorkerEventMap["message"]) {
+      if (type === "saveFile/callback") {
+        const { fileId, blob } = payload;
         const file = timelineFiles.find((file) => file.id === fileId);
 
         if (!file) return;
@@ -85,9 +84,9 @@ export const WebRTCProvider: FC = ({ children }) => {
       }
     }
 
-    if (worker) worker.addEventListener("message", handleWorkerMessage);
+    worker?.addEventListener("message", handleWorkerMessage);
     return () => {
-      if (worker) worker.removeEventListener("message", handleWorkerMessage);
+      worker?.removeEventListener("message", handleWorkerMessage);
     };
   }, [worker, timelineFiles]);
 
@@ -108,7 +107,7 @@ export const WebRTCProvider: FC = ({ children }) => {
       toast.error("Device not found");
     }
 
-    callerRef.current.destroy();
+    callerRef.current?.destroy();
     callerRef.current = undefined;
     setSignalingState("idle");
   });
@@ -156,7 +155,7 @@ export const WebRTCProvider: FC = ({ children }) => {
 
     function handleSignal(signal) {
       // Send caller's signal to the peer
-      const peerId = peerID;
+      const peerId = peerID as number;
       const callPayload: ICallInitData = { peerId, signal };
 
       socket.emit("callPeer", callPayload);
@@ -174,12 +173,11 @@ export const WebRTCProvider: FC = ({ children }) => {
     const callee = calleeRef.current;
     if (!callee) return;
 
-    const call = incomingCall;
-
     const handleCallConnected = getCallConnectedHandler(callee);
     callee.on("connect", handleCallConnected);
 
     function handleSignal(signal) {
+      const call = incomingCall as ICallData;
       const callerId = call.callerId;
       setPeerID(callerId);
       const answerCallPayload: ICallData = { callerId, signal };
@@ -206,7 +204,7 @@ export const WebRTCProvider: FC = ({ children }) => {
         progress: 0,
       },
     };
-    rtcDataTransport.send(fileInfo);
+    rtcDataTransport?.send(fileInfo);
 
     // Transport file in chunks
     // Chunking id is used to stop the process
@@ -219,7 +217,7 @@ export const WebRTCProvider: FC = ({ children }) => {
           )
         );
 
-        rtcDataTransport.send<RTCTransportData<FileData>>({
+        rtcDataTransport?.send<RTCTransportData<FileData>>({
           type: "fileTransport/fileData",
           payload: {
             id: fileId,
@@ -235,16 +233,21 @@ export const WebRTCProvider: FC = ({ children }) => {
     // Update timeline
     setTimelineFiles((old) => [
       ...old,
-      { ...fileInfo.payload, direction: "up", chunkingId, isCancelled: false },
+      {
+        ...(fileInfo.payload as FileData),
+        direction: "up",
+        chunkingId,
+        isCancelled: false,
+      },
     ]);
   }
 
   function saveFile(fileId: string) {
-    worker.postMessage({ type: "saveFile", payload: { fileId } });
+    worker?.postMessage({ type: "saveFile", payload: { fileId } });
   }
 
-  function stopSendingFile(file?: TimelineFile) {
-    rtcDataTransport.send({
+  function stopSendingFile(file: TimelineFile) {
+    rtcDataTransport?.send({
       type: "fileTransport/sendingCancelled",
       payload: {
         fileId: file.id,
@@ -252,7 +255,7 @@ export const WebRTCProvider: FC = ({ children }) => {
     });
 
     // Stop chunking
-    stopReadingInChunks(file.chunkingId);
+    stopReadingInChunks(file.chunkingId as string);
 
     // Update timeline
     setTimelineFiles((timelineFiles) =>
@@ -264,8 +267,8 @@ export const WebRTCProvider: FC = ({ children }) => {
     );
   }
 
-  function stopReceivingFile(file?: TimelineFile) {
-    rtcDataTransport.send<RTCTransportData>({
+  function stopReceivingFile(file: TimelineFile) {
+    rtcDataTransport?.send<RTCTransportData>({
       type: "fileTransport/receivingCancelled",
       payload: {
         fileId: file.id,
@@ -286,7 +289,7 @@ export const WebRTCProvider: FC = ({ children }) => {
     if (!connection) return;
 
     function handleData(chunk) {
-      rtcDataTransport.handleData<RTCTransportData>(chunk, (data) => {
+      rtcDataTransport?.handleData<RTCTransportData>(chunk, (data) => {
         if (data.type === "fileTransport/fileData") {
           const file: TimelineFile = {
             id: data.payload.id,
@@ -311,7 +314,7 @@ export const WebRTCProvider: FC = ({ children }) => {
             );
 
             // Send chunks to worker
-            worker.postMessage({
+            worker?.postMessage({
               type: "fileChunk",
               payload: {
                 fileId: data.payload.id,
@@ -330,16 +333,16 @@ export const WebRTCProvider: FC = ({ children }) => {
           );
         } else if (data.type === "fileTransport/receivingCancelled") {
           const { fileId } = data.payload;
-
-          stopSendingFile(
-            timelineFiles.find((timelineFile) => timelineFile.id === fileId)
+          const file = timelineFiles.find(
+            (timelineFile) => timelineFile.id === fileId
           );
+          if (file) stopSendingFile(file);
         }
       });
     }
 
     function handleClose() {
-      connection.destroy();
+      connection?.destroy();
       setConnection(undefined);
 
       if (signalingState === "connected")
@@ -365,7 +368,7 @@ export const WebRTCProvider: FC = ({ children }) => {
     };
   }, [worker, connection, timelineFiles, rtcDataTransport]);
 
-  const value: WebRTCContext = {
+  const value: WebRTCContextValue = {
     signalingState,
     timelineFiles,
     call,
