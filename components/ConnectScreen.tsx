@@ -8,16 +8,17 @@ import { useWebSocket } from "../modules/WebSocketProvider";
 const ConnectScreen: FC = () => {
   const { id } = useWebSocket();
   const { signalingState, call } = useWebRTC();
-  const peerIdInputRef = useRef<HTMLInputElement>();
+  const peerIdInputRef = useRef<HTMLInputElement>(null);
 
   function handleIdCopy() {
+    if (!id) return;
     copy(id.toString());
     toast.success("Copied", { pauseOnFocusLoss: false });
   }
 
   const handleSubmit: FormEventHandler = async (event) => {
     event.preventDefault();
-    call(parseInt(peerIdInputRef.current.value));
+    if (peerIdInputRef.current) call(parseInt(peerIdInputRef.current.value));
   };
 
   return (

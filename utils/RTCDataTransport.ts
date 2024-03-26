@@ -3,14 +3,14 @@ import objectPath from "object-path";
 import readObjectValues from "./readObjectValues";
 
 export interface RTCDataTransportInstance {
-  send: <Data>(object: Data) => void;
+  send: <Data extends Object>(object: Data) => void;
   handleData: <Data>(chunk: any, onData: (data: Data) => unknown) => void;
 }
 
 export default function RTCDataTransport(
   rtcSend: (chunk: any) => unknown
 ): RTCDataTransportInstance {
-  let chunks = [];
+  let chunks: any[] = [];
 
   function combineDataChunks(chunks: any[]) {
     const schema = chunks[0];
@@ -29,7 +29,21 @@ export default function RTCDataTransport(
   }
 
   function createDataChunks(object: Object) {
-    const values = [];
+    const Constructors = [
+      Buffer,
+      Int8Array,
+      Uint8Array,
+      Uint8ClampedArray,
+      Int16Array,
+      Uint16Array,
+      Int32Array,
+      Uint32Array,
+      Float32Array,
+      Float64Array,
+      DataView,
+    ];
+
+    const values: any[] = [];
 
     const schema = deepcopy(object);
     readObjectValues(schema, (pathname, value) => {
@@ -38,20 +52,6 @@ export default function RTCDataTransport(
       if (type === "function")
         throw new TypeError("Functions are not supported.");
       if (type !== "object") return;
-
-      const Constructors = [
-        Buffer,
-        Int8Array,
-        Uint8Array,
-        Uint8ClampedArray,
-        Int16Array,
-        Uint16Array,
-        Int32Array,
-        Uint32Array,
-        Float32Array,
-        Float64Array,
-        DataView,
-      ];
 
       const supportedTypeMatched = Constructors.some((Constructor) => {
         if (value instanceof Constructor) {
@@ -80,7 +80,7 @@ export default function RTCDataTransport(
     return [JSON.stringify(schema), ...values];
   }
 
-  function send<Data>(object: Data) {
+  function send<Data extends Object>(object: Data) {
     const chunks = createDataChunks(object);
 
     chunks.forEach((chunk) => rtcSend(chunk));

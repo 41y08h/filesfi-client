@@ -36,7 +36,7 @@ export default function Home() {
     peerID,
   } = useWebRTC();
 
-  const sendButtonRef = useRef<HTMLButtonElement>();
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
   const [file, setFile] = useState<File>();
   const [isSendingModalOpen, setIsSendingModalOpen] = useState(false);
 
@@ -47,14 +47,14 @@ export default function Home() {
   };
 
   async function handleSendFile() {
-    sendFile(file);
+    if (file) sendFile(file);
     setIsSendingModalOpen(false);
   }
 
   // Sending Modal
   function handleSendingModalOpen() {
     const sendButton = sendButtonRef.current;
-    sendButton.focus();
+    sendButton?.focus();
   }
 
   function handleSendingModalClose() {
@@ -123,7 +123,7 @@ export default function Home() {
                   </span>
                 </div>
                 <p className="text-sm mt-1">
-                  Size: {formatFileSize(file?.size)}
+                  Size: {formatFileSize(file?.size || 0)}
                 </p>
               </div>
 

@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 
+// @ts-expect-error
 const Component = dynamic(() => import("../modules/index"), {
   ssr: false,
 });

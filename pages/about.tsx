@@ -1,4 +1,5 @@
 import Head from "next/head";
+import Image from "next/image";
 
 export default function About() {
   return (
@@ -11,7 +12,7 @@ export default function About() {
           About the Project
         </h1>
         <div className="bg-white w-full mt-8 flex justify-center p-4 rounded-lg">
-          <img
+          <Image
             src="https://dyte.io/blog/content/images/2022/10/webrtc-gif-2.gif"
             alt="web-rtc"
           />
@@ -30,10 +31,11 @@ export default function About() {
             </p>
             <p className="mt-4">
               This is an OSS (Open Source Software) and its entire codebase can
-              be found on Github. It's a webapp and there's a separate server
-              and repository for{" "}
+              be found on Github. It&apos;s a webapp and there&apos;s a separate
+              server and repository for{" "}
               <a
                 target="_blank"
+                rel="noreferrer"
                 className="text-blue-800 underline"
                 href="https://github.com/41y08h/filesfi-api"
               >
@@ -42,6 +44,7 @@ export default function About() {
               and{" "}
               <a
                 target="_blank"
+                rel="noreferrer"
                 className="text-blue-800 underline"
                 href="https://github.com/41y08h/filesfi-client"
               >

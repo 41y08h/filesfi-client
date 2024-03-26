@@ -17,6 +17,8 @@ import readInChunks, { stopReadingInChunks } from "../utils/readInChunks";
 import { v4 as uuid } from "uuid";
 import RTCDataTransport from "../utils/RTCDataTransport";
 
+type SignalingState = "idle" | "connecting" | "connected";
+
 type RTCTransportDataType =
   | "fileTransport/fileData"
   | "fileTransport/sendingCancelled"
