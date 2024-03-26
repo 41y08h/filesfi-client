@@ -11,13 +11,15 @@ export default function About() {
         <h1 className="text-center font-bold text-2xl mt-4">
           About the Project
         </h1>
-        <div className="bg-white w-full mt-8 relative h-80 flex justify-center p-4 rounded-lg">
-          <Image
-            src="/webrtc.gif"
-            layout="fill"
-            objectFit="contain"
-            alt="web-rtc"
-          />
+        <div className="bg-white w-full mt-8 flex justify-center p-4 rounded-lg">
+          <div className="w-full h-64 relative">
+            <Image
+              src="/webrtc.gif"
+              layout="fill"
+              objectFit="contain"
+              alt="web-rtc"
+            />
+          </div>
         </div>
         <div className="mt-8">
           <small className="italic">14th March 2024</small>
