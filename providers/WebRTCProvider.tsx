@@ -346,11 +346,8 @@ export const WebRTCProvider: FC = ({ children }) => {
     function handleClose() {
       connection?.destroy();
       setConnection(undefined);
-
-      if (signalingState === "connected")
-        toast.error("Connection has been closed");
-
       setSignalingState("idle");
+      toast.error("Connection has been closed");
     }
 
     function handleError(error) {
