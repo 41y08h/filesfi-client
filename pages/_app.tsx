@@ -3,8 +3,8 @@ import "../styles/globals.css";
 import "react-toastify/dist/ReactToastify.css";
 import "react-tabs/style/react-tabs.css";
 import Layout from "../components/Layout";
-import { WebSocketProvider } from "../modules/WebSocketProvider";
-import { WebRTCProvider } from "../modules/WebRTCProvider";
+import { WebSocketProvider } from "../providers/WebSocketProvider";
+import { WebRTCProvider } from "../providers/WebRTCProvider";
 
 function MyApp({ Component, pageProps }) {
   return (

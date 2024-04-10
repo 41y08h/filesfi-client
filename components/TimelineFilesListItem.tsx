@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { FaFile } from "react-icons/fa";
-import { TimelineFile } from "../modules";
+import { TimelineFile } from "./Home";
 import formatFileSize from "../utils/formatFileSize";
 import { MdOutlineCancel } from "react-icons/md";
 import { GoDownload } from "react-icons/go";

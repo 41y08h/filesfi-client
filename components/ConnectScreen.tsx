@@ -2,8 +2,8 @@ import copy from "copy-to-clipboard";
 import { FC, FormEventHandler, Ref, useRef } from "react";
 import { FaGlobeAmericas, FaRegCopy } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { useWebRTC } from "../modules/WebRTCProvider";
-import { useWebSocket } from "../modules/WebSocketProvider";
+import { useWebRTC } from "../providers/WebRTCProvider";
+import { useWebSocket } from "../providers/WebSocketProvider";
 
 const ConnectScreen: FC = () => {
   const { id } = useWebSocket();

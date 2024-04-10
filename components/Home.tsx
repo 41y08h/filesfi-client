@@ -1,18 +1,18 @@
 import { useState, useRef, useMemo } from "react";
-import FileInput from "../components/FileInput";
+import FileInput from "./FileInput";
 import { Dialog, Tab, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import formatFileSize from "../utils/formatFileSize";
 import { GrSend } from "react-icons/gr";
 import { FaFile } from "react-icons/fa6";
 import { MdConnectWithoutContact, MdOutlineCancel } from "react-icons/md";
-import ConnectingScreen from "../components/ConnectingScreen";
-import ConnectScreen from "../components/ConnectScreen";
-import TimelineFilesListItem from "../components/TimelineFilesListItem";
+import ConnectingScreen from "./ConnectingScreen";
+import ConnectScreen from "./ConnectScreen";
+import TimelineFilesListItem from "./TimelineFilesListItem";
 import { FaFolder } from "react-icons/fa";
 import { CiFileOff } from "react-icons/ci";
-import { useWebSocket } from "./WebSocketProvider";
-import { useWebRTC } from "./WebRTCProvider";
+import { useWebSocket } from "../providers/WebSocketProvider";
+import { useWebRTC } from "../providers/WebRTCProvider";
 
 export interface TimelineFile {
   id: string;
