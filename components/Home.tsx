@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import FileInput from "./FileInput";
 import { Dialog, Tab, Transition } from "@headlessui/react";
 import { Fragment } from "react";
@@ -13,6 +13,7 @@ import { FaFolder } from "react-icons/fa";
 import { CiFileOff } from "react-icons/ci";
 import { useWebSocket } from "../providers/WebSocketProvider";
 import { useWebRTC } from "../providers/WebRTCProvider";
+import toast from "react-hot-toast";
 
 export interface TimelineFile {
   id: string;
@@ -64,6 +65,10 @@ export default function Home() {
   function handleDialogClose() {
     setIsSendingModalOpen(false);
   }
+
+  useEffect(() => {
+    if (signalingState === "connected") toast.success("Connected");
+  }, [signalingState]);
 
   if (!isSocketConnected) return <ConnectingScreen />;
   if (signalingState !== "connected") return <ConnectScreen />;

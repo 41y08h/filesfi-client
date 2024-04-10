@@ -44,7 +44,7 @@ export default function Index(props) {
           content="https://filesfi.netlify.app/filesfi_cover.jpg"
         />
       </Head>
-      <Component {...props} />;
+      <Component {...props} />
     </>
   );
 }

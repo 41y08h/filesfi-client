@@ -11,11 +11,11 @@ import Peer, { Instance as SimplePeerInstance } from "simple-peer";
 import { ICallData, ICallInitData } from "../interfaces/call";
 import useEventSubscription from "../hooks/useEventSubscription";
 import socket from "../RTCs/socket";
-import { toast } from "react-toastify";
 import { TimelineFile } from "../components/Home";
 import readInChunks, { stopReadingInChunks } from "../utils/readInChunks";
 import { v4 as uuid } from "uuid";
 import RTCDataTransport from "../utils/RTCDataTransport";
+import toast from "react-hot-toast";
 
 type SignalingState = "idle" | "connecting" | "connected";
 

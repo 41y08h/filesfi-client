@@ -1,9 +1,9 @@
 import copy from "copy-to-clipboard";
 import { FC, FormEventHandler, Ref, useRef } from "react";
 import { FaGlobeAmericas, FaRegCopy } from "react-icons/fa";
-import { toast } from "react-toastify";
 import { useWebRTC } from "../providers/WebRTCProvider";
 import { useWebSocket } from "../providers/WebSocketProvider";
+import toast from "react-hot-toast";
 
 const ConnectScreen: FC = () => {
   const { id } = useWebSocket();
@@ -13,7 +13,7 @@ const ConnectScreen: FC = () => {
   function handleIdCopy() {
     if (!id) return;
     copy(id.toString());
-    toast.success("Copied", { pauseOnFocusLoss: false });
+    toast.success("Copied");
   }
 
   const handleSubmit: FormEventHandler = async (event) => {
