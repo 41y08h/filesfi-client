@@ -85,7 +85,7 @@ const ConnectScreen: FC = () => {
                 }
               >
                 <QrReader
-                  facingMode="rear"
+                  facingMode="environment"
                   className=" rounded-lg w-full bg-white"
                   onScan={(data) => {
                     if (!isScannerModalOpen) return;
