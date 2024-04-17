@@ -6,10 +6,10 @@ import { useWebSocket } from "../providers/WebSocketProvider";
 import toast from "react-hot-toast";
 import QRCode from "react-qr-code";
 import { RiQrScan2Line } from "react-icons/ri";
-import QrReader from "react-qr-scanner";
 import { Dialog, Transition } from "@headlessui/react";
 import { RxCross2 } from "react-icons/rx";
 import { ErrorBoundary } from "react-error-boundary";
+import { QrReader } from "react-qr-reader";
 
 const ConnectScreen: FC = () => {
   const { id } = useWebSocket();
@@ -85,18 +85,26 @@ const ConnectScreen: FC = () => {
                 }
               >
                 <QrReader
-                  facingMode="environment"
-                  className=" rounded-lg w-full bg-white"
-                  onScan={(data) => {
+                  className="w-full"
+                  videoStyle={{
+                    width: "100%",
+                    position: "static",
+                  }}
+                  videoContainerStyle={{
+                    height: "auto",
+                    paddingTop: "0",
+                    borderRadius: "0.5rem",
+                  }}
+                  onResult={(data) => {
                     if (!isScannerModalOpen) return;
                     if (data == null) return;
                     const input = peerIdInputRef.current;
                     if (!input) return;
-                    input.value = data.text;
+                    input.value = data.getText();
                     toggleSendingModal();
                     startCall();
                   }}
-                  onError={(e) => {}}
+                  constraints={{ facingMode: "environment" }}
                 />
               </ErrorBoundary>
             </Dialog.Title>
