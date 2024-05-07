@@ -51,6 +51,7 @@ const FileInput: FC<Props> = ({
       {isDragging ? "Release file here" : children}
       <input
         type="file"
+        multiple
         className="hidden"
         id="fileUpload"
         value="" // to fire onChange on every file select (not only change in selected file)

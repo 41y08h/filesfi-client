@@ -14,6 +14,7 @@ import { CiFileOff } from "react-icons/ci";
 import { useWebSocket } from "../providers/WebSocketProvider";
 import { useWebRTC } from "../providers/WebRTCProvider";
 import toast from "react-hot-toast";
+import { ImDownload2 } from "react-icons/im";
 
 export interface TimelineFile {
   id: string;
@@ -38,17 +39,16 @@ export default function Home() {
   } = useWebRTC();
 
   const sendButtonRef = useRef<HTMLButtonElement>(null);
-  const [file, setFile] = useState<File>();
+  const [files, setFiles] = useState<File[]>();
   const [isSendingModalOpen, setIsSendingModalOpen] = useState(false);
 
   const handleFileChange = (files: FileList) => {
-    const file = files[0];
-    setFile(file);
-    if (file) setIsSendingModalOpen(true);
+    setFiles(Array.from(files));
+    if (files.length) setIsSendingModalOpen(true);
   };
 
   async function handleSendFile() {
-    if (file) sendFile(file);
+    if (files?.length) files.forEach(sendFile);
     setIsSendingModalOpen(false);
   }
 
@@ -59,11 +59,16 @@ export default function Home() {
   }
 
   function handleSendingModalClose() {
-    setFile(undefined);
+    setFiles(undefined);
   }
 
   function handleDialogClose() {
     setIsSendingModalOpen(false);
+  }
+
+  function saveAllFiles() {
+    timelineFiles.map((file) => saveFile(file.id));
+    toast.success("Your files will be downloaded shortly");
   }
 
   useEffect(() => {
@@ -115,22 +120,24 @@ export default function Home() {
                 <GrSend className="mr-2 text-xl" />
                 <span className="font-bold">Send</span>
               </Dialog.Title>
-              <div className="mt-4">
-                <div className="flex items-center">
-                  <span className="mr-2">
-                    <FaFile />
-                  </span>
-                  <span
-                    title={file?.name}
-                    className="overflow-hidden whitespace-nowrap text-ellipsis text-sm"
-                  >
-                    {file?.name}
-                  </span>
-                </div>
-                <p className="text-sm mt-1">
-                  Size: {formatFileSize(file?.size || 0)}
-                </p>
-              </div>
+              <ul className="mt-4 max-h-72 overflow-y-auto">
+                {files?.map((file) => (
+                  <div className="flex justify-between items-center mt-2 border-b border-gray-200">
+                    <span className="bg-black text-white rounded-md p-2">
+                      <FaFile className="text-sm" />
+                    </span>
+                    <p
+                      title={file.name}
+                      className="text-sm ml-3 overflow-hidden text-ellipsis whitespace-nowrap w-full"
+                    >
+                      {file.name}
+                    </p>
+                    <small className="ml-2 flex-shrink-0">
+                      {formatFileSize(file.size)}
+                    </small>
+                  </div>
+                ))}
+              </ul>
 
               <div className="flex items-center justify-between mt-4">
                 <button
@@ -183,14 +190,23 @@ export default function Home() {
               <FaFile className="mr-2" />
             </span>
             <p className="overflow-hidden whitespace-nowrap text-ellipsis">
-              {file ? file.name : "Select or drop files here"}
+              Select or drop files here
             </p>
           </FileInput>
         </div>
         <div className="mt-3 md:mt-5 bg-gray-100 border border-gray-300 rounded-lg flex-1">
           <div className="mb-2 font-light flex justify-center items-end border-b border-gray-300">
-            <div className="flex items-center w-full px-4 py-2 text-lg rounded-t-lg bg-gray-800 text-white justify-center md:justify-start">
-              <FaFolder className="mr-2 text-white" /> <span>Files</span>
+            <div className="flex items-center w-full justify-between px-4 py-2 text-lg rounded-t-lg bg-gray-800 text-white ">
+              <div className="flex items-center">
+                <FaFolder className="mr-2 text-white" /> <span>Files</span>
+              </div>
+              <button
+                onClick={saveAllFiles}
+                className="text-sm flex items-center"
+              >
+                <ImDownload2 className="mr-2" />
+                <span>Download all</span>
+              </button>
             </div>
           </div>
           {timelineFiles.length === 0 && (
