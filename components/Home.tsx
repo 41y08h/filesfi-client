@@ -122,7 +122,10 @@ export default function Home() {
               </Dialog.Title>
               <ul className="mt-4 max-h-72 overflow-y-auto">
                 {files?.map((file) => (
-                  <div className="flex justify-between items-center mt-2 border-b border-gray-200">
+                  <div
+                    key={file.name + file.size}
+                    className="flex justify-between items-center mt-2 border-b border-gray-200"
+                  >
                     <span className="bg-black text-white rounded-md p-2">
                       <FaFile className="text-sm" />
                     </span>
